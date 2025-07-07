@@ -5,7 +5,7 @@ client = OpenAI()
 
 vs_id = "vs_686b72b9b3ac81919b71dc0c7a5df5d7"   # ← your vector-store ID
 
-with open("af_prompt.txt") as f:
+with open("data/af_prompt.txt") as f:
     prompt = f.read()
 
 assistant = client.beta.assistants.create(       # 🔸 note the .beta.

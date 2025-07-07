@@ -4,7 +4,7 @@ load_dotenv()
 client = OpenAI()
 
 vs_id   = "vs_686b72b9b3ac81919b71dc0c7a5df5d7"     # your store
-file_id = "file-3fSuh1C2JUygmahoSuKbD5"                               # newest ID
+file_id = "file-XrHQiDZjP6jFJ7QeP8kt1B"                               # newest ID
 
 client.vector_stores.file_batches.create(
     vector_store_id = vs_id,

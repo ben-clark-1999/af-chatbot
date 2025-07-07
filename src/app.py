@@ -24,27 +24,46 @@ def send():
         return
     st.session_state.msg = ""
 
-    # 1️⃣ RAG: query the vector store
-    results = client.vector_stores.query(vector_store_id=VS_ID, query=user, top_k=3)
-    context = "\n".join(d.text for d in results.data)
-
-    # 2️⃣ Chat completion
-    resp = client.chat.completions.create(
-        model="gpt-4o",
-        messages=[
-            {"role":"system","content":SYSTEM_PROMPT + "\n\nContext:\n" + context},
-            {"role":"user","content":user}
-        ]
-    )
-    answer = resp.choices[0].message.content
-
-    # add to history
+    # store user msg locally for display
     st.session_state.history.append({"role":"user","content":user})
-    st.session_state.history.append({"role":"assistant","content":answer})
 
-    # log
+    # ① start (or reuse) one assistant thread per browser session
+    if "thread_id" not in st.session_state:
+        thread = client.beta.threads.create()
+        st.session_state.thread_id = thread.id
+
+    client.beta.threads.messages.create(
+        thread_id = st.session_state.thread_id,
+        role      = "user",
+        content   = user,
+    )
+    run = client.beta.threads.runs.create(
+        thread_id   = st.session_state.thread_id,
+        assistant_id= open("ids/af_assistant_id.txt").read().strip()
+    )
+
+    # ② poll until done
+    import time
+    while run.status in {"queued", "in_progress"}:
+        time.sleep(0.4)
+        run = client.beta.threads.runs.retrieve(
+            thread_id=st.session_state.thread_id,
+            run_id   = run.id
+        )
+
+    # ③ fetch assistant reply
+    msgs = client.beta.threads.messages.list(
+        thread_id=st.session_state.thread_id, order="asc"
+    )
+    assistant_msg = msgs.data[-1].content[0].text.value
+    st.session_state.history.append({"role":"assistant","content":assistant_msg})
+
+    # optional log
     with open("chat_log.csv","a",newline="") as f:
-        csv.writer(f).writerow([datetime.utcnow(), user, answer])
+        csv.writer(f).writerow(
+            [datetime.utcnow(), user, assistant_msg]
+        )
+
 
 # render chat
 for msg in st.session_state.history[1:]:
