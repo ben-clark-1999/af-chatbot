@@ -6,3 +6,6 @@ af_thread_id.txt
 __pycache__/
 *.pyc
 *.log
+# IDs and logs
+ids/*.txt
+chat_log.csv

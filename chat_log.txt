@@ -1,0 +1,6 @@
+USER: How do I cancel my membership?
+FITMATE: To cancel your Anytime Fitness membership, you need to contact your home club directly. Since each club is independently owned and operated, they have specific cancellation policies and procedures. You can find the contact information for your club by visiting the Anytime Fitness Australia website and using the club locator feature. It's also a good idea to check your membership agreement for any details on the cancellation notice period or fees that may apply.
+
+USER: I have a billing error—who do I call?
+FITMATE: For any billing issues, you should contact the staff at your local Anytime Fitness club. They will be able to assist you with any discrepancies or concerns related to your membership billing. If you're unsure how to get in touch with your club, you can use the club locator on the Anytime Fitness Australia website to find their contact information.
+

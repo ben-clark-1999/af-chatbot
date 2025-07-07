@@ -25,6 +25,12 @@ print("💬 You are now chatting with FitMate. Type 'exit' to quit.\n")
 
 while True:
     user_input = input("You: ").strip()
+    if not user_input:
+        continue
+    if user_input.lower() in {"exit", "quit"}:
+        break
+
+
     if user_input.lower() in {"exit", "quit"}:
         print("👋 Goodbye!")
         break
