@@ -1,0 +1,8 @@
+.env
+af_assistant_id.txt
+af_thread_id.txt
+.vscode/
+.venv/
+__pycache__/
+*.pyc
+*.log
