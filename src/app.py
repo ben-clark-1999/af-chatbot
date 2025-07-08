@@ -1,9 +1,10 @@
 # src/app.py  – Streamlit web UI for FitMate
-import streamlit as st, csv
+import streamlit as st, csv, re          # ← add “re” here
 from datetime import datetime
 from openai import OpenAI
 from dotenv import load_dotenv
 import os
+
 
 load_dotenv()
 client = OpenAI()
@@ -51,11 +52,15 @@ def send():
             run_id   = run.id
         )
 
-    # ③ fetch assistant reply
+   # ③ fetch assistant reply
     msgs = client.beta.threads.messages.list(
         thread_id=st.session_state.thread_id, order="asc"
     )
     assistant_msg = msgs.data[-1].content[0].text.value
+
+    # 🔽  NEW: remove any “【 … 】” citation blocks
+    assistant_msg = re.sub(r"【[^】]*】", "", assistant_msg).strip()
+
     st.session_state.history.append({"role":"assistant","content":assistant_msg})
 
     # optional log
