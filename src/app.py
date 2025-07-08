@@ -43,49 +43,39 @@ def send():
         return
     st.session_state.msg = ""
 
-    # store user msg locally for display
-    st.session_state.history.append({"role":"user","content":user})
+    st.session_state.history.append({"role": "user", "content": user})
 
-    # ① start (or reuse) one assistant thread per browser session
+    # Step 1: Create thread (or reuse existing one)
     if "thread_id" not in st.session_state:
         thread = client.beta.threads.create()
         st.session_state.thread_id = thread.id
 
+    # Step 2: Add user message to thread
     client.beta.threads.messages.create(
-        thread_id = st.session_state.thread_id,
-        role      = "user",
-        content   = user,
+        thread_id=st.session_state.thread_id,
+        role="user",
+        content=user
     )
+
+    # ✅ Step 3: Run the assistant — no file_ids needed
     run = client.beta.threads.runs.create(
-        thread_id   = st.session_state.thread_id,
-        assistant_id= open("ids/af_assistant_id.txt").read().strip()
+        thread_id=st.session_state.thread_id,
+        assistant_id=open("ids/af_assistant_id.txt").read().strip()
     )
 
-    # ② poll until done
-    import time
-    while run.status in {"queued", "in_progress"}:
-        time.sleep(0.4)
-        run = client.beta.threads.runs.retrieve(
-            thread_id=st.session_state.thread_id,
-            run_id   = run.id
-        )
+    # Step 4: Poll for completion
+    while run.status != "completed":
+        time.sleep(1)
+        run = client.beta.threads.runs.retrieve(thread_id=st.session_state.thread_id, run_id=run.id)
 
-   # ③ fetch assistant reply
-    msgs = client.beta.threads.messages.list(
-        thread_id=st.session_state.thread_id, order="asc"
-    )
-    assistant_msg = msgs.data[-1].content[0].text.value
+    # Step 5: Fetch the latest assistant message
+    msgs = client.beta.threads.messages.list(thread_id=st.session_state.thread_id)
+    reply = msgs.data[0].content[0].text.value.strip()
+    reply = re.sub(r"【[^】]*】", "", reply)
+    st.session_state.history.append({"role": "assistant", "content": reply})
 
-    # 🔽  NEW: remove any “【 … 】” citation blocks
-    assistant_msg = re.sub(r"【[^】]*】", "", assistant_msg).strip()
-
-    st.session_state.history.append({"role":"assistant","content":assistant_msg})
-
-    # optional log
-    with open("chat_log.csv","a",newline="") as f:
-        csv.writer(f).writerow(
-            [datetime.utcnow(), user, assistant_msg]
-        )
+    with open("chat_log.csv", "a", newline="") as f:
+        csv.writer(f).writerow([datetime.utcnow(), user, reply])
 
 
 # render chat
