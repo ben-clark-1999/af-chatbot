@@ -38,6 +38,7 @@ if "history" not in st.session_state:
 
 
 def send():
+
     user = st.session_state.msg.strip()
     if not user:
         return
@@ -82,13 +83,14 @@ def send():
     st.session_state.history.append({"role":"assistant","content":assistant_msg})
 
     # optional log
-    log_path = os.path.abspath("logs/chat_log.csv")  # absolute path for debugging
-    with open(log_path, "a", newline="") as f:
-        csv.writer(f).writerow([datetime.utcnow(), user, assistant_msg])
-    print(f"✅ LOGGED TO: {log_path}")  # print the actual file path used
+    if "log" not in st.session_state:
+        st.session_state.log = []
 
-
-
+    st.session_state.log.append({
+        "timestamp": str(datetime.utcnow()),
+        "user": user,
+        "assistant": assistant_msg
+    })
 
 # render chat
 # render chat
