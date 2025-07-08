@@ -71,41 +71,8 @@ Try asking:
 
 ## Directory Structure
 
-af-chatbot/
-├── src/
-│   ├── app.py                    # Streamlit UI
-│   ├── chat_af.py                # backend test script (legacy)
-│   └── chat_af_responses.py      # Responses API version
-│
-├── scripts/
-│   ├── add_to_vs.py              # add files to vector store
-│   ├── build_vector_store.py     # vector store builder
-│   ├── check_vs_status.py        # monitor indexing progress
-│   ├── create_af_assistant.py    # create assistant programmatically
-│   ├── update_af_assistant.py    # update assistant instructions
-│   ├── upload_clubs.py           # upload club directory data
-│   └── upload_faqs.py            # upload FAQs
-│
-├── data/
-│   ├── af_prompt.txt
-│   ├── af_faqs.txt
-│   ├── club_directory.txt
-│   └── chat_log.csv              # log of Q&A history
-│
-├── ids/
-│   ├── af_assistant_id.txt
-│   └── vector_store_id.txt
-│
-├── logs/
-│   ├── chat_log.txt              # optional backup log
-│   └── chat_log.csv              # used for analytics or audit
-│
-├── .env                          # environment secrets (ignored)
-├── .env.example                  # template for collaborators
-├── .gitignore
-├── requirements.txt
-├── README.md
-└── fitmate.png                   # screenshot for README
+<pre><code>## 📁 Directory Structure af-chatbot/ ├── src/ │ ├── app.py # Streamlit UI │ ├── chat_af.py # backend test script (legacy) │ └── chat_af_responses.py # Responses API version │ ├── scripts/ │ ├── add_to_vs.py # add files to vector store │ ├── build_vector_store.py # vector store builder │ ├── check_vs_status.py # monitor indexing progress │ ├── create_af_assistant.py # create assistant programmatically │ ├── update_af_assistant.py # update assistant instructions │ ├── upload_clubs.py # upload club directory data │ └── upload_faqs.py # upload FAQs │ ├── data/ │ ├── af_prompt.txt │ ├── af_faqs.txt │ ├── club_directory.txt │ └── chat_log.csv # log of Q&A history │ ├── ids/ │ ├── af_assistant_id.txt │ └── vector_store_id.txt │ ├── logs/ │ ├── chat_log.txt # optional backup log │ └── chat_log.csv # used for analytics or audit │ ├── .env # environment secrets (ignored) ├── .env.example # template for collaborators ├── .gitignore ├── requirements.txt ├── README.md └── fitmate.png # screenshot for README </code></pre>
+
 
 ## 🪪 License
 

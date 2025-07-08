@@ -1,9 +1,10 @@
 # src/app.py  – Streamlit web UI for FitMate
-import streamlit as st, csv, re          # ← add “re” here
+import streamlit as st, csv, re, time
 from datetime import datetime
 from openai import OpenAI
 from dotenv import load_dotenv
 import os
+
 
 
 load_dotenv()
@@ -17,7 +18,11 @@ st.set_page_config(page_title="FitMate", page_icon="💜")
 st.title("💜 FitMate – Anytime Fitness Assistant")
 
 if "history" not in st.session_state:
-    st.session_state.history = [{"role":"system","content":SYSTEM_PROMPT}]
+    st.session_state.history = [
+        {"role": "system", "content": SYSTEM_PROMPT},
+        {"role": "assistant", "content": "Hi! I'm FitMate 👋\n\nAsk me anything about Anytime Fitness — locations, billing, gym hours — or general fitness guidance."}
+    ]
+
 
 def send():
     user = st.session_state.msg.strip()
@@ -71,7 +76,19 @@ def send():
 
 
 # render chat
-for msg in st.session_state.history[1:]:
-    st.chat_message(msg["role"]).write(msg["content"])
+# render chat
+for i, msg in enumerate(st.session_state.history[1:]):
+    if msg["role"] == "assistant" and i == len(st.session_state.history[1:]) - 1:
+        # simulate typing for the latest assistant message
+        placeholder = st.chat_message("assistant").empty()
+        full_msg = msg["content"]
+        animated = ""
+        for char in full_msg:
+            animated += char
+            placeholder.markdown(animated)
+            time.sleep(0.015)  # typing speed (seconds per character)
+    else:
+        st.chat_message(msg["role"]).write(msg["content"])
+
 
 st.text_input("Ask FitMate …", key="msg", on_change=send)
