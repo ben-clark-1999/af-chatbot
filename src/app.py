@@ -104,3 +104,4 @@ for i, msg in enumerate(st.session_state.history[1:]):
 
 
 st.text_input("Ask FitMate …", key="msg", on_change=send)
+
