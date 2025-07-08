@@ -1,11 +1,35 @@
+# ✅ Environment variables
 .env
+.env.*
+
+# ✅ Virtual environments
+.venv/
+venv/
+ENV/
+
+# ✅ IDE/editor configs
+.vscode/
+.idea/
+*.code-workspace
+
+# ✅ Python cache and logs
+__pycache__/
+*.py[cod]
+*.log
+
+# ✅ Streamlit logs/state
+.streamlit/
+
+# ✅ Local data/logs
+chat_log.csv
+logs/
+*.sqlite3
+
+# ✅ Assistant/thread/vector IDs
+ids/*.txt
 af_assistant_id.txt
 af_thread_id.txt
-.vscode/
-.venv/
-__pycache__/
-*.pyc
-*.log
-# IDs and logs
-ids/*.txt
-chat_log.csv
+vector_store_id.txt
+
+# ✅ MacOS cruft
+.DS_Store
