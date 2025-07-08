@@ -3,6 +3,11 @@
 FitMate is a custom AI assistant for **Anytime Fitness Australia**, built with the OpenAI Assistants API and deployed via **Streamlit**. It answers common gym member queries, provides club contact details, and guides users with friendly, on-brand responses.
 
 ---
+# 🧠 How does it work?
+
+- FitMate uses OpenAI’s Vector Store to power document-aware responses. When users ask questions, the assistant retrieves relevant snippets from uploaded FAQs and club data to improve accuracy and contextuality.
+
+---
 
 ## 🚀 Features
 
