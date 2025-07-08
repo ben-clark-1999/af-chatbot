@@ -99,7 +99,7 @@ for i, msg in enumerate(st.session_state.history[1:]):
         for char in full_msg:
             animated += char
             placeholder.markdown(animated)
-            time.sleep(0.015)  # typing speed (seconds per character)
+            time.sleep(0.01)  # typing speed (seconds per character)
     else:
         st.chat_message(msg["role"]).write(msg["content"])
 
