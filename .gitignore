@@ -26,9 +26,6 @@ chat_log.csv
 logs/
 *.sqlite3
 
-# ✅ Assistant/thread/vector IDs
-af_assistant_id.txt
-af_thread_id.txt
 
 
 # ✅ MacOS cruft
