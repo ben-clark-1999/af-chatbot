@@ -82,10 +82,9 @@ def send():
     st.session_state.history.append({"role":"assistant","content":assistant_msg})
 
     # optional log
-    with open("chat_log.csv","a",newline="") as f:
-        csv.writer(f).writerow(
-            [datetime.utcnow(), user, assistant_msg]
-        )
+    with open("logs/chat_log.csv", "a", newline="") as f:
+        csv.writer(f).writerow([datetime.utcnow(), user, reply])
+
 
 
 # render chat
