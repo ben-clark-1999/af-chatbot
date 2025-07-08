@@ -6,12 +6,16 @@ from dotenv import load_dotenv
 import streamlit as st
 from openai import OpenAI
 
+client = OpenAI(
+      api_key="API_KEY_OPENAI"
+)
+
+
 import os
 for var in ("HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY",
             "http_proxy", "https_proxy", "all_proxy"):
     os.environ.pop(var, None)          # strip Cloud’s proxy vars
 
-client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
 
 
