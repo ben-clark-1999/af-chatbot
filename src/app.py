@@ -1,14 +1,21 @@
 # src/app.py  – Streamlit web UI for FitMate
 import streamlit as st, csv, re, time
 from datetime import datetime
-from openai import OpenAI
+
 from dotenv import load_dotenv
+from openai import OpenAI
+import streamlit as st
 import os
+for var in ("HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY",
+            "http_proxy", "https_proxy", "all_proxy"):
+    os.environ.pop(var, None)          # strip Cloud’s proxy vars
+
+client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
 
 
 load_dotenv()
-client = OpenAI()
+
 
 # read assets
 SYSTEM_PROMPT = open("data/af_prompt.txt").read().strip()
