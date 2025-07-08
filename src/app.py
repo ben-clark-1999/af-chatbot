@@ -10,6 +10,7 @@ client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
 
 
+
 import os
 for var in ("HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY",
             "http_proxy", "https_proxy", "all_proxy"):
