@@ -19,6 +19,7 @@ __pycache__/
 
 # ✅ Streamlit logs/state
 .streamlit/
+!.streamlit/secrets.toml
 
 # ✅ Local data/logs
 chat_log.csv
@@ -32,3 +33,4 @@ af_thread_id.txt
 
 # ✅ MacOS cruft
 .DS_Store
+.streamlit/secrets.toml
