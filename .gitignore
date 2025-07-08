@@ -26,7 +26,6 @@ logs/
 *.sqlite3
 
 # ✅ Assistant/thread/vector IDs
-ids/*.txt
 af_assistant_id.txt
 af_thread_id.txt
 vector_store_id.txt
