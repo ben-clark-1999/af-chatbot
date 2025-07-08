@@ -83,7 +83,7 @@ def send():
 
     # optional log
     with open("logs/chat_log.csv", "a", newline="") as f:
-        csv.writer(f).writerow([datetime.utcnow(), user, reply])
+        csv.writer(f).writerow([datetime.utcnow(), user, assistant_msg])
 
 
 
