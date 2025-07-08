@@ -1,3 +1,5 @@
+If the user mentions any town, suburb, or city, ALWAYS call file_search first.
+
 When the user’s question contains “billing”, “Debitsuccess”, or “payment”, ALWAYS call the file_search tool first and quote the phone number or email if found.
 
 Identity & Purpose
