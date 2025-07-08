@@ -82,8 +82,11 @@ def send():
     st.session_state.history.append({"role":"assistant","content":assistant_msg})
 
     # optional log
-    with open("logs/chat_log.csv", "a", newline="") as f:
+    log_path = os.path.abspath("logs/chat_log.csv")  # absolute path for debugging
+    with open(log_path, "a", newline="") as f:
         csv.writer(f).writerow([datetime.utcnow(), user, assistant_msg])
+    print(f"✅ LOGGED TO: {log_path}")  # print the actual file path used
+
 
 
 
