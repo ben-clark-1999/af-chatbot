@@ -38,59 +38,59 @@ if "history" not in st.session_state:
 
 
 def send():
-
     user = st.session_state.msg.strip()
     if not user:
         return
     st.session_state.msg = ""
 
-    # store user msg locally for display
-    st.session_state.history.append({"role":"user","content":user})
+    st.session_state.history.append({"role": "user", "content": user})
 
-    # ① start (or reuse) one assistant thread per browser session
     if "thread_id" not in st.session_state:
         thread = client.beta.threads.create()
         st.session_state.thread_id = thread.id
 
     client.beta.threads.messages.create(
-        thread_id = st.session_state.thread_id,
-        role      = "user",
-        content   = user,
-    )
-    run = client.beta.threads.runs.create(
-        thread_id   = st.session_state.thread_id,
-        assistant_id= open("ids/af_assistant_id.txt").read().strip()
+        thread_id=st.session_state.thread_id,
+        role="user",
+        content=user,
     )
 
-    # ② poll until done
-    import time
+    run = client.beta.threads.runs.create(
+        thread_id=st.session_state.thread_id,
+        assistant_id=open("ids/af_assistant_id.txt").read().strip()
+    )
+
     while run.status in {"queued", "in_progress"}:
         time.sleep(0.4)
         run = client.beta.threads.runs.retrieve(
             thread_id=st.session_state.thread_id,
-            run_id   = run.id
+            run_id=run.id
         )
 
-   # ③ fetch assistant reply
     msgs = client.beta.threads.messages.list(
         thread_id=st.session_state.thread_id, order="asc"
     )
     assistant_msg = msgs.data[-1].content[0].text.value
-
-    # 🔽  NEW: remove any “【 … 】” citation blocks
     assistant_msg = re.sub(r"【[^】]*】", "", assistant_msg).strip()
 
-    st.session_state.history.append({"role":"assistant","content":assistant_msg})
+    st.session_state.history.append({"role": "assistant", "content": assistant_msg})
 
-    # optional log
+    # Save to in-memory log
     if "log" not in st.session_state:
         st.session_state.log = []
-
     st.session_state.log.append({
         "timestamp": str(datetime.utcnow()),
         "user": user,
         "assistant": assistant_msg
     })
+
+    # Save to CSV file
+    log_path = os.path.abspath("logs/chat_log.csv")
+    os.makedirs(os.path.dirname(log_path), exist_ok=True)
+    with open(log_path, "a", newline="") as f:
+        writer = csv.writer(f)
+        writer.writerow([datetime.utcnow(), user, assistant_msg])
+    print(f"✅ Logged to {log_path}")
 
 # render chat
 # render chat
