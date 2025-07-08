@@ -28,7 +28,7 @@ logs/
 # ✅ Assistant/thread/vector IDs
 af_assistant_id.txt
 af_thread_id.txt
-vector_store_id.txt
+
 
 # ✅ MacOS cruft
 .DS_Store
