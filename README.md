@@ -38,23 +38,23 @@ git clone https://github.com/ben-clark-1999/af-chatbot.git
 cd fitmate-chatbot
 ```
 
-### 2. Create virtual environment
+### 2. Create virtual environment 🐍
 
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 
-### 3. Install dependencies
+### 3. Install dependencies 📦
 
 pip install -r requirements.txt
 
-### 4. Set up `.env`
+### 4. Set up `.env` ⚙️
 
 OPENAI_API_KEY=your-openai-api-key-here
 
 🔐 Do not commit this file to GitHub. Add .env to .gitignore.
 
-### 5. Run the app
+### 5. Run the app  🚀
 
 streamlit run src/app.py
 
@@ -69,7 +69,7 @@ Try asking:
 - "Can I bring a friend to the gym?"
 - "Where’s the closest Anytime Fitness to Hunters Hill?"
 
-## 📸 Directory Structure
+## 📁 Directory Structure
 
 ![Directory Structure Screenshot](directory_structure.png)
 
