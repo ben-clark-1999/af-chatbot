@@ -1,24 +1,30 @@
-# ── src/app.py – Streamlit web UI for FitMate ────────────────────────────────
-import os, re, csv, time
-from datetime import datetime, timezone
+# ── top of app.py ────────────────────────────────────────────────────────────
+import os, csv, re, time
+from datetime import datetime
 
 import streamlit as st
 from dotenv import load_dotenv
 from openai import OpenAI
 from supabase import create_client, Client
 
-# ── CONFIG & SDK SETUP ───────────────────────────────────────────────────────
-load_dotenv()                                   # read .env once at start-up
+# 1️⃣ local .env for dev
+load_dotenv()
 
-OPENAI_API_KEY    = os.getenv("OPENAI_API_KEY")
-SUPABASE_URL      = os.getenv("SUPABASE_URL")
-SUPABASE_ANON_KEY = os.getenv("SUPABASE_ANON_KEY")
+# 2️⃣ read secrets (cloud) → fallback to env (local)
+OPENAI_API_KEY     = st.secrets.get("OPENAI_API_KEY"    , os.getenv("OPENAI_API_KEY"))
+SUPABASE_URL       = st.secrets.get("SUPABASE_URL"      , os.getenv("SUPABASE_URL"))
+SUPABASE_ANON_KEY  = st.secrets.get("SUPABASE_ANON_KEY" , os.getenv("SUPABASE_ANON_KEY"))
 
 if not all([OPENAI_API_KEY, SUPABASE_URL, SUPABASE_ANON_KEY]):
-    raise RuntimeError("❌ One of OPENAI_API_KEY / SUPABASE_URL / SUPABASE_ANON_KEY is missing")
+    raise RuntimeError(
+        "❌ One of OPENAI_API_KEY / SUPABASE_URL / SUPABASE_ANON_KEY is missing."
+        "  • Locally: add them to .env\n"
+        "  • Streamlit Cloud: add them in Settings → Secrets"
+    )
 
 openai_client:   OpenAI  = OpenAI(api_key=OPENAI_API_KEY)
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_ANON_KEY)
+# ─────────────────────────────────────────────────────────────────────────────
 
 # (optional) strip any proxy vars that might slow things down
 for var in ("HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY",
