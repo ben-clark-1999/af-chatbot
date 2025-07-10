@@ -1,4 +1,4 @@
-# ── top of app.py ────────────────────────────────────────────────────────────
+# ── IMPORTS ────────────────────────────────────────────────────────────────
 import os, csv, re, time
 from datetime import datetime, timezone
 
@@ -6,10 +6,10 @@ import streamlit as st
 from dotenv import load_dotenv
 from openai import OpenAI
 
-
+# ── HELPERS ────────────────────────────────────────────────────────────────
 def escape_md(text: str) -> str:
     """Back-slash stray * or _ so Markdown shows them literally."""
-    return re.sub(r'(?<!\\)([*_])', r'\\\1', text)
+    return re.sub(r'(?<!\\)([*_])', r'\\\\\1', text)
 
 # 1️⃣ local .env for dev
 load_dotenv()
@@ -25,7 +25,6 @@ if not OPENAI_API_KEY:
     )
 
 openai_client = OpenAI(api_key=OPENAI_API_KEY)
-# ─────────────────────────────────────────────────────────────────────────────
 
 # (optional) strip any proxy vars that might slow things down
 for var in (
@@ -43,7 +42,82 @@ SYSTEM_PROMPT = open("data/af_prompt.txt").read().strip()
 VS_ID = open("ids/vector_store_id.txt").read().strip()
 
 st.set_page_config(page_title="FitMate", page_icon="💜")
-st.title("💜 FitMate – Anytime Fitness Assistant")
+
+st.markdown("""
+    <style>
+    html, body, [data-testid="stAppViewContainer"] > .main {
+        background-color: #0c0c10;
+        display: flex;
+        justify-content: center;
+        padding-top: 2rem;
+    }
+    .chat-phone {
+        width: 390px;
+        border: 1px solid #2a2d34;
+        border-radius: 20px;
+        background: #111317;
+        box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+        overflow: hidden;
+        padding: 0;
+    }
+    .chat-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px 16px;
+        font-size: 14px;
+        font-weight: 600;
+        color: #f1f5f9;
+        background: #111317;
+        border-bottom: 1px solid #2a2d34;
+    }
+    .chat-header .icons {
+        color: #cbd5e1;
+        font-size: 18px;
+    }
+
+    [data-testid="stChatMessage"] .stMarkdown {
+        border-radius: 16px;
+        padding: 0.75rem 1rem;
+        max-width: 85%;
+        font-size: 0.95rem;
+        line-height: 1.45;
+    }
+    [data-testid="stChatMessage"].assistant .stMarkdown {
+        margin-right: auto;
+        background: #1c1e24;
+        color: #f3f4f6;
+        border: 1px solid #2a2d34;
+    }
+    [data-testid="stChatMessage"].user .stMarkdown {
+        margin-left: auto;
+        background: #ff5c00;
+        color: #fff;
+    }
+
+    [data-testid="stChatInput"] {
+        background: #111317;
+        border-top: 1px solid #2a2d34;
+        border-radius: 0;
+    }
+    [data-testid="stChatInput"] textarea {
+        background: transparent;
+        color: #f3f4f6;
+    }
+    button[kind="secondary"] {
+        background: #23262e;
+        border: none;
+    }
+    button[kind="secondary"]:hover {
+        background: #2d3038;
+    }
+    </style>
+""", unsafe_allow_html=True)
+
+with st.container():
+    st.markdown('<div class="chat-phone">', unsafe_allow_html=True)
+    st.markdown('<div class="chat-header">FitMate • AI Agent <span class="icons">⋮</span></div>', unsafe_allow_html=True)
+    st.title("")  # blank title for spacing
 
 if "history" not in st.session_state:
     st.session_state.history = [
@@ -55,7 +129,6 @@ if "history" not in st.session_state:
     ]
 
 # ── CHAT HANDLER ─────────────────────────────────────────────────────────────
-
 def send() -> None:
     user = st.session_state.msg.strip()
     if not user:
@@ -104,14 +177,16 @@ for i, msg in enumerate(st.session_state.history[1:]):
     if msg["role"] == "assistant" and i == len(st.session_state.history[1:]) - 1:
         placeholder = st.chat_message("assistant").empty()
         animated = ""
-        animated = ""
         for ch in msg["content"]:
             animated += ch
             placeholder.markdown(escape_md(animated))
             time.sleep(0.01)
-
     else:
         st.chat_message(msg["role"]).markdown(escape_md(msg["content"]))
 
+# ── CHAT INPUT ─────────────────────────────────────────────────────────────
+prompt = st.chat_input("Type a message…")
+if prompt is not None:
+    st.session_state.msg = prompt
+    send()
 
-st.text_input("Ask FitMate …", key="msg", on_change=send)
