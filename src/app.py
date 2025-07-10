@@ -38,7 +38,8 @@ st.title("💜 FitMate – Anytime Fitness Assistant")
 st.markdown("""
     <style>
     html, body, [data-testid="stAppViewContainer"] > .main {
-        background: linear-gradient(to bottom right, #f4f1ff, #eef6ff);
+        background: linear-gradient(to bottom right, #faf5ff, #ffffff, #ebf8ff);
+        background-attachment: fixed;
         color: #333;
         font-family: 'Segoe UI', sans-serif;
     }
@@ -54,6 +55,7 @@ st.markdown("""
         background: rgba(255, 255, 255, 0.75);
         color: #111;
         box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+        backdrop-filter: blur(8px);
     }
     [data-testid="stChatMessage"].user .stMarkdown {
         margin-left: auto;
@@ -74,7 +76,7 @@ st.markdown("""
         font-size: 0.9rem;
         color: #222;
     }
-    </style>
+</style>
 """, unsafe_allow_html=True)
 
 # Initialize session
