@@ -8,9 +8,11 @@ from openai import OpenAI
 
 
 def escape_md(text: str) -> str:
-    """Back-slash any * or _ that isn’t already escaped so Streamlit
-    doesn’t treat it as Markdown emphasis."""
+    """Back-slash stray * or _ so Markdown shows them literally."""
     return re.sub(r'(?<!\\)([*_])', r'\\\1', text)
+
+# 1️⃣ local .env for dev
+load_dotenv()
 
 # 2️⃣ read secrets (cloud) → fallback to env (local)
 OPENAI_API_KEY = st.secrets.get("OPENAI_API_KEY", os.getenv("OPENAI_API_KEY"))
@@ -97,21 +99,16 @@ def send() -> None:
         csv.writer(f).writerow([datetime.now(timezone.utc), user, assistant_msg])
     print(f"✅ Logged to {log_path}")
 
-# ── CHAT UI ──────────────────────────────────────────────────────────
-for idx, msg in enumerate(st.session_state.history[1:]):
-    is_last = idx == len(st.session_state.history[1:]) - 1
-
-    if msg["role"] == "assistant":
-        if is_last:                                     # typing effect
-            ph = st.chat_message("assistant").empty()
-            animated = ""
-            for ch in msg["content"]:
-                animated += ch
-                ph.markdown(escape_md(animated))        # ← escape here
-                time.sleep(0.01)
-        else:                                           # older replies
-            st.chat_message("assistant").markdown(
-                escape_md(msg["content"])
-            )                                           # ← and here
+# ── CHAT UI ──────────────────────────────────────────────────────────────────
+for i, msg in enumerate(st.session_state.history[1:]):
+    if msg["role"] == "assistant" and i == len(st.session_state.history[1:]) - 1:
+        placeholder = st.chat_message("assistant").empty()
+        animated = ""
+        for ch in msg["content"]:
+            animated += ch
+            placeholder.write(animated)          
+            time.sleep(0.01)
     else:
-        st.chat_message("user").write(msg["content"])
+        st.chat_message(msg["role"]).write(msg["content"])
+
+st.text_input("Ask FitMate …", key="msg", on_change=send)
