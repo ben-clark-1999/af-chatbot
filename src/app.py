@@ -27,14 +27,9 @@ if not OPENAI_API_KEY:
 openai_client = OpenAI(api_key=OPENAI_API_KEY)
 # ─────────────────────────────────────────────────────────────────────────────
 
-# (optional) strip any proxy vars that might slow things down
 for var in (
-    "HTTP_PROXY",
-    "HTTPS_PROXY",
-    "ALL_PROXY",
-    "http_proxy",
-    "https_proxy",
-    "all_proxy",
+    "HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY",
+    "http_proxy", "https_proxy", "all_proxy",
 ):
     os.environ.pop(var, None)
 
@@ -63,7 +58,6 @@ def send() -> None:
     st.session_state.msg = ""
     st.session_state.history.append({"role": "user", "content": user})
 
-    # ① create / reuse Assistant thread
     if "thread_id" not in st.session_state:
         thread = openai_client.beta.threads.create()
         st.session_state.thread_id = thread.id
@@ -78,21 +72,18 @@ def send() -> None:
         assistant_id=open("ids/af_assistant_id.txt").read().strip(),
     )
 
-    # ② poll until GPT is done
     while run.status in {"queued", "in_progress"}:
         time.sleep(0.4)
         run = openai_client.beta.threads.runs.retrieve(
             thread_id=st.session_state.thread_id, run_id=run.id
         )
 
-    # ③ fetch Assistant reply
     msgs = openai_client.beta.threads.messages.list(
         thread_id=st.session_state.thread_id, order="asc"
     )
     assistant_msg = re.sub(r"【[^】]*】", "", msgs.data[-1].content[0].text.value).strip()
     st.session_state.history.append({"role": "assistant", "content": assistant_msg})
 
-    # ④ append to local CSV (persists only on your machine / session)
     log_path = os.path.abspath("logs/chat_log.csv")
     os.makedirs(os.path.dirname(log_path), exist_ok=True)
     with open(log_path, "a", newline="") as f:
@@ -104,14 +95,17 @@ for i, msg in enumerate(st.session_state.history[1:]):
     if msg["role"] == "assistant" and i == len(st.session_state.history[1:]) - 1:
         placeholder = st.chat_message("assistant").empty()
         animated = ""
-        animated = ""
         for ch in msg["content"]:
             animated += ch
             placeholder.markdown(escape_md(animated))
             time.sleep(0.01)
-
     else:
         st.chat_message(msg["role"]).markdown(escape_md(msg["content"]))
 
-
-st.text_input("Ask FitMate …", key="msg", on_change=send)
+# ── INPUT FIELD + SEND BUTTON ────────────────────────────────────────────────
+st.markdown("---")
+col1, col2 = st.columns([5, 1])
+with col1:
+    st.text_input("Ask FitMate …", key="msg", placeholder="Type your question here...")
+with col2:
+    st.button("Send", on_click=send, use_container_width=True)
