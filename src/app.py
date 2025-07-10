@@ -5,35 +5,37 @@ from datetime import datetime, timezone
 import streamlit as st
 from dotenv import load_dotenv
 from openai import OpenAI
-from supabase import create_client, Client
 
 # 1️⃣ local .env for dev
 load_dotenv()
 
 # 2️⃣ read secrets (cloud) → fallback to env (local)
-OPENAI_API_KEY     = st.secrets.get("OPENAI_API_KEY"    , os.getenv("OPENAI_API_KEY"))
-SUPABASE_URL       = st.secrets.get("SUPABASE_URL"      , os.getenv("SUPABASE_URL"))
-SUPABASE_ANON_KEY  = st.secrets.get("SUPABASE_ANON_KEY" , os.getenv("SUPABASE_ANON_KEY"))
+OPENAI_API_KEY = st.secrets.get("OPENAI_API_KEY", os.getenv("OPENAI_API_KEY"))
 
-if not all([OPENAI_API_KEY, SUPABASE_URL, SUPABASE_ANON_KEY]):
+if not OPENAI_API_KEY:
     raise RuntimeError(
-        "❌ One of OPENAI_API_KEY / SUPABASE_URL / SUPABASE_ANON_KEY is missing."
-        "  • Locally: add them to .env\n"
-        "  • Streamlit Cloud: add them in Settings → Secrets"
+        "❌ OPENAI_API_KEY is missing.\n"
+        "  • Locally: add it to .env\n"
+        "  • Streamlit Cloud: add it in Settings → Secrets"
     )
 
-openai_client:   OpenAI  = OpenAI(api_key=OPENAI_API_KEY)
-supabase: Client = create_client(SUPABASE_URL, SUPABASE_ANON_KEY)
+openai_client = OpenAI(api_key=OPENAI_API_KEY)
 # ─────────────────────────────────────────────────────────────────────────────
 
 # (optional) strip any proxy vars that might slow things down
-for var in ("HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY",
-            "http_proxy", "https_proxy", "all_proxy"):
+for var in (
+    "HTTP_PROXY",
+    "HTTPS_PROXY",
+    "ALL_PROXY",
+    "http_proxy",
+    "https_proxy",
+    "all_proxy",
+):
     os.environ.pop(var, None)
 
 # ── STREAMLIT PAGE INIT ─────────────────────────────────────────────────────
 SYSTEM_PROMPT = open("data/af_prompt.txt").read().strip()
-VS_ID         = open("ids/vector_store_id.txt").read().strip()
+VS_ID = open("ids/vector_store_id.txt").read().strip()
 
 st.set_page_config(page_title="FitMate", page_icon="💜")
 st.title("💜 FitMate – Anytime Fitness Assistant")
@@ -41,11 +43,14 @@ st.title("💜 FitMate – Anytime Fitness Assistant")
 if "history" not in st.session_state:
     st.session_state.history = [
         {"role": "system", "content": SYSTEM_PROMPT},
-        {"role": "assistant",
-         "content": "Hi! I'm FitMate 👋\n\nAsk me anything about Anytime Fitness — locations, billing, gym hours — or general fitness guidance."}
+        {
+            "role": "assistant",
+            "content": "Hi! I'm FitMate 👋\n\nAsk me anything about Anytime Fitness — locations, billing, gym hours — or general fitness guidance.",
+        },
     ]
 
 # ── CHAT HANDLER ─────────────────────────────────────────────────────────────
+
 def send() -> None:
     user = st.session_state.msg.strip()
     if not user:
@@ -82,17 +87,7 @@ def send() -> None:
     assistant_msg = re.sub(r"【[^】]*】", "", msgs.data[-1].content[0].text.value).strip()
     st.session_state.history.append({"role": "assistant", "content": assistant_msg})
 
-    # ④ persist to Supabase
-    try:
-        supabase.table("chat_logs").insert({
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-            "user_input": user,
-            "bot_response": assistant_msg
-        }).execute()
-    except Exception as e:
-        print(f"❌ Supabase insert failed: {e}")
-
-    # ⑤ append to local CSV (optional)
+    # ④ append to local CSV (persists only on your machine / session)
     log_path = os.path.abspath("logs/chat_log.csv")
     os.makedirs(os.path.dirname(log_path), exist_ok=True)
     with open(log_path, "a", newline="") as f:
