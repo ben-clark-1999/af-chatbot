@@ -11,12 +11,11 @@ def escape_md(text: str) -> str:
     """Back-slash stray * or _ so Markdown shows them literally."""
     return re.sub(r'(?<!\\)([*_])', r'\\\1', text)
 
-# 1️⃣ local .env for dev
+# 1️⃣ Load .env for local dev
 load_dotenv()
 
-# 2️⃣ read secrets (cloud) → fallback to env (local)
+# 2️⃣ Secrets from cloud or local fallback
 OPENAI_API_KEY = st.secrets.get("OPENAI_API_KEY", os.getenv("OPENAI_API_KEY"))
-
 if not OPENAI_API_KEY:
     raise RuntimeError(
         "❌ OPENAI_API_KEY is missing.\n"
@@ -26,14 +25,14 @@ if not OPENAI_API_KEY:
 
 openai_client = OpenAI(api_key=OPENAI_API_KEY)
 
-# strip proxies
+# Strip proxies
 for var in (
     "HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY",
     "http_proxy", "https_proxy", "all_proxy",
 ):
     os.environ.pop(var, None)
 
-# ── STREAMLIT PAGE INIT ─────────────────────────────────────────────────────
+# ── INIT ──────────────────────────────────────────────────────────────────────
 SYSTEM_PROMPT = open("data/af_prompt.txt").read().strip()
 VS_ID = open("ids/vector_store_id.txt").read().strip()
 
@@ -55,8 +54,8 @@ def send() -> None:
     user = st.session_state.get("msg", "").strip()
     if not user:
         return
-    st.session_state["msg"] = ""
 
+    st.session_state["msg"] = ""
     st.session_state.history.append({"role": "user", "content": user})
 
     if "thread_id" not in st.session_state:
@@ -92,6 +91,7 @@ def send() -> None:
     print(f"✅ Logged to {log_path}")
 
 # ── CHAT UI ──────────────────────────────────────────────────────────────────
+
 for i, msg in enumerate(st.session_state.history[1:]):
     if msg["role"] == "assistant" and i == len(st.session_state.history[1:]) - 1:
         placeholder = st.chat_message("assistant").empty()
@@ -103,40 +103,55 @@ for i, msg in enumerate(st.session_state.history[1:]):
     else:
         st.chat_message(msg["role"]).markdown(escape_md(msg["content"]))
 
-# ── INPUT FIELD + TECH-STYLED BUTTON (FULLY FUNCTIONAL) ───────────────────────
+# ── INPUT FIELD + TECH-STYLED SEND BUTTON ─────────────────────────────────────
+
+st.markdown("---")
+col1, col2 = st.columns([5, 1])
+
+with col1:
+    st.text_input("Ask FitMate …", key="msg", placeholder="Type your question here...")
+
+with col2:
+    st.markdown(
+        """
+        <style>
+        .send-button {
+            background: linear-gradient(135deg, #7e5bef, #5f27cd);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 0.6rem;
+            font-weight: 600;
+            font-size: 16px;
+            width: 100%;
+            cursor: pointer;
+            transition: all 0.2s ease-in-out;
+            box-shadow: 0 4px 14px rgba(94, 58, 255, 0.3);
+        }
+        .send-button:hover {
+            background: linear-gradient(135deg, #5f27cd, #341f97);
+            transform: translateY(-2px) scale(1.03);
+            box-shadow: 0 6px 20px rgba(94, 58, 255, 0.5);
+        }
+        </style>
+        <button class="send-button" onclick="window.dispatchEvent(new Event('send-message'))">🚀 Send</button>
+        """,
+        unsafe_allow_html=True,
+    )
+
+# hidden button triggered via JS
+if st.button("HiddenSendTrigger", key="hidden", help="hidden", on_click=send, disabled=False):
+    pass
+
+# JS to forward "send-message" event to click the Streamlit button
 st.markdown(
     """
-    <style>
-    div[data-testid="column"] button {
-        background: linear-gradient(135deg, #7e5bef, #5f27cd) !important;
-        color: white !important;
-        border: none !important;
-        border-radius: 8px !important;
-        padding: 0.6rem !important;
-        font-weight: 600 !important;
-        font-size: 16px !important;
-        width: 100% !important;
-        cursor: pointer !important;
-        transition: all 0.2s ease-in-out !important;
-        box-shadow: 0 4px 14px rgba(94, 58, 255, 0.3) !important;
-    }
-    div[data-testid="column"] button:hover {
-        background: linear-gradient(135deg, #5f27cd, #341f97) !important;
-        transform: translateY(-2px) scale(1.03) !important;
-        box-shadow: 0 6px 20px rgba(94, 58, 255, 0.5) !important;
-    }
-    </style>
+    <script>
+    window.addEventListener("send-message", () => {
+        const hiddenBtn = window.parent.document.querySelector('button[title="hidden"]');
+        if (hiddenBtn) hiddenBtn.click();
+    });
+    </script>
     """,
     unsafe_allow_html=True,
 )
-
-with st.form(key="chat_form", clear_on_submit=True):
-    col1, col2 = st.columns([5, 1])
-    with col1:
-        user_input = st.text_input("Ask FitMate …", key="msg", placeholder="Type your question here...")
-    with col2:
-        submitted = st.form_submit_button("🚀", type="primary")
-
-if submitted:
-    send()
-
