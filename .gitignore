@@ -17,10 +17,10 @@ __pycache__/
 *.py[cod]
 *.log
 
-# ✅ Streamlit config and secrets
+# Streamlit config
 !.streamlit/
 !.streamlit/config.toml
-!.streamlit/secrets.toml
+.streamlit/secrets.toml
 
 # ✅ Local data/logs
 chat_log.csv
