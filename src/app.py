@@ -94,53 +94,60 @@ def send() -> None:
     user = st.session_state.msg.strip()
     if not user:
         return
-    st.session_state.msg = ""
-    st.session_state.history.append({"role": "user", "content": user})
+    st.session_state.msg = ""  # clear input box
+
+    # Ensure only one run per thread at a time
+    if st.session_state.get("run_in_progress", False):
+        st.warning("Please wait for the assistant to finish responding.")
+        return
 
     if "thread_id" not in st.session_state:
         thread = openai_client.beta.threads.create()
         st.session_state.thread_id = thread.id
 
-    openai_client.beta.threads.messages.create(
-        thread_id=st.session_state.thread_id,
-        role="user",
-        content=user,
-    )
-    run = openai_client.beta.threads.runs.create(
-        thread_id=st.session_state.thread_id,
-        assistant_id=open("ids/af_assistant_id.txt").read().strip(),
-    )
+    try:
+        st.session_state.run_in_progress = True
 
-    while run.status in {"queued", "in_progress"}:
-        time.sleep(0.4)
-        run = openai_client.beta.threads.runs.retrieve(
-            thread_id=st.session_state.thread_id, run_id=run.id
+        openai_client.beta.threads.messages.create(
+            thread_id=st.session_state.thread_id,
+            role="user",
+            content=user,
+        )
+        run = openai_client.beta.threads.runs.create(
+            thread_id=st.session_state.thread_id,
+            assistant_id=open("ids/af_assistant_id.txt").read().strip(),
         )
 
-    msgs = openai_client.beta.threads.messages.list(
-        thread_id=st.session_state.thread_id, order="asc"
-    )
-    assistant_msg = re.sub(r"【[^】]*】", "", msgs.data[-1].content[0].text.value).strip()
-    st.session_state.history.append({"role": "assistant", "content": assistant_msg})
+        while run.status in {"queued", "in_progress"}:
+            time.sleep(0.4)
+            run = openai_client.beta.threads.runs.retrieve(
+                thread_id=st.session_state.thread_id,
+                run_id=run.id,
+            )
 
-    log_path = os.path.abspath("logs/chat_log.csv")
-    os.makedirs(os.path.dirname(log_path), exist_ok=True)
-    with open(log_path, "a", newline="") as f:
-        csv.writer(f).writerow([datetime.now(timezone.utc), user, assistant_msg])
-    print(f"✅ Logged to {log_path}")
+        msgs = openai_client.beta.threads.messages.list(
+            thread_id=st.session_state.thread_id,
+            order="asc"
+        )
+        assistant_msg = re.sub(r"【[^】]*】", "", msgs.data[-1].content[0].text.value).strip()
 
-# ── CHAT UI ──────────────────────────────────────────────────────────────────
-for i, msg in enumerate(st.session_state.history[1:]):
-    is_latest_assistant = msg["role"] == "assistant" and i == len(st.session_state.history[1:]) - 1
-    if is_latest_assistant:
-        placeholder = st.chat_message("assistant").empty()
-        animated = ""
-        for ch in msg["content"]:
-            animated += ch
-            placeholder.markdown(escape_md(animated))
-            time.sleep(0.01)
-    else:
-        st.chat_message(msg["role"]).markdown(escape_md(msg["content"]))
+        # Only add to history after successful reply
+        st.session_state.history.append({"role": "user", "content": user})
+        st.session_state.history.append({"role": "assistant", "content": assistant_msg})
+
+        # Log
+        log_path = os.path.abspath("logs/chat_log.csv")
+        os.makedirs(os.path.dirname(log_path), exist_ok=True)
+        with open(log_path, "a", newline="") as f:
+            csv.writer(f).writerow([datetime.now(timezone.utc), user, assistant_msg])
+        print(f"✅ Logged to {log_path}")
+
+    except Exception as e:
+        st.error("Something went wrong talking to the assistant.")
+        st.exception(e)
+
+    finally:
+        st.session_state.run_in_progress = False
 
 # ── CHAT INPUT ─────────────────────────────────────────────────────────────
 prompt = st.chat_input("Ask FitMate …")
