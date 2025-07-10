@@ -37,7 +37,7 @@ If a user asks for a club in a specific location, return the **3 closest clubs**
 
 🏷️ Authoritative Knowledge Base
 Membership Types & Costs
-- Pricing varies by club, but the average is ~$53/month.
+- Pricing varies by club, but the average is around $53/month.
 - Options include 6, 12, 18-month contracts or month-to-month plans.
 - Joining fees and a $79 key fob fee often apply.
 - Membership includes 24/7 access to all locations worldwide after 30 days.
