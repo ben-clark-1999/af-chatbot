@@ -74,10 +74,10 @@ if "history" not in st.session_state:
 
 # ── CHAT HANDLER ─────────────────────────────────────────────────────────────
 def send() -> None:
-    user = st.session_state.msg.strip()
+    user = st.session_state.get("msg", "").strip()
     if not user:
         return
-    st.session_state.msg = ""
+
     st.session_state.history.append({"role": "user", "content": user})
 
     # ① create / reuse Assistant thread
@@ -109,24 +109,16 @@ def send() -> None:
     assistant_msg = re.sub(r"【[^】]*】", "", msgs.data[-1].content[0].text.value).strip()
     st.session_state.history.append({"role": "assistant", "content": assistant_msg})
 
-    # ④ append to local CSV (persists only on your machine / session)
+    # ④ log it
     log_path = os.path.abspath("logs/chat_log.csv")
     os.makedirs(os.path.dirname(log_path), exist_ok=True)
     with open(log_path, "a", newline="") as f:
         csv.writer(f).writerow([datetime.now(timezone.utc), user, assistant_msg])
     print(f"✅ Logged to {log_path}")
 
-# ── CHAT UI ──────────────────────────────────────────────────────────────────
-for i, msg in enumerate(st.session_state.history[1:]):
-    if msg["role"] == "assistant" and i == len(st.session_state.history[1:]) - 1:
-        placeholder = st.chat_message("assistant").empty()
-        animated = ""
-        for ch in msg["content"]:
-            animated += ch
-            placeholder.markdown(escape_md(animated))
-            time.sleep(0.01)
-    else:
-        st.chat_message(msg["role"]).markdown(escape_md(msg["content"]))
+    # 🧹 rerun to reset the input safely
+    st.session_state.msg = ""
+    st.experimental_rerun()
 
 # ── INPUT BOX + BUTTON ───────────────────────────────────────────────────────
 with st.container():
