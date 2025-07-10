@@ -8,11 +8,9 @@ from openai import OpenAI
 
 
 def escape_md(text: str) -> str:
-    """Back-slash stray * or _ so Markdown shows them literally."""
+    """Back-slash any * or _ that isn’t already escaped so Streamlit
+    doesn’t treat it as Markdown emphasis."""
     return re.sub(r'(?<!\\)([*_])', r'\\\1', text)
-
-# 1️⃣ local .env for dev
-load_dotenv()
 
 # 2️⃣ read secrets (cloud) → fallback to env (local)
 OPENAI_API_KEY = st.secrets.get("OPENAI_API_KEY", os.getenv("OPENAI_API_KEY"))
@@ -99,24 +97,21 @@ def send() -> None:
         csv.writer(f).writerow([datetime.now(timezone.utc), user, assistant_msg])
     print(f"✅ Logged to {log_path}")
 
-# ── CHAT UI ──────────────────────────────────────────────────────────────────
-for i, msg in enumerate(st.session_state.history[1:]):
-    is_assistant = msg["role"] == "assistant"
-    is_last_assistant = is_assistant and i == len(st.session_state.history[1:]) - 1
+# ── CHAT UI ──────────────────────────────────────────────────────────
+for idx, msg in enumerate(st.session_state.history[1:]):
+    is_last = idx == len(st.session_state.history[1:]) - 1
 
-    # Assistant message with typing animation (last reply only)
-    if is_last_assistant:
-        placeholder = st.chat_message("assistant").empty()
-        animated = ""
-        for ch in msg["content"]:
-            animated += ch
-            placeholder.markdown(escape_md(animated))   # ⬅️ escape stray *_
-            time.sleep(0.01)
-
-    # All earlier messages
+    if msg["role"] == "assistant":
+        if is_last:                                     # typing effect
+            ph = st.chat_message("assistant").empty()
+            animated = ""
+            for ch in msg["content"]:
+                animated += ch
+                ph.markdown(escape_md(animated))        # ← escape here
+                time.sleep(0.01)
+        else:                                           # older replies
+            st.chat_message("assistant").markdown(
+                escape_md(msg["content"])
+            )                                           # ← and here
     else:
-        bubble = st.chat_message(msg["role"])
-        if is_assistant:
-            bubble.markdown(escape_md(msg["content"]))  # ⬅️ escape stray *_
-        else:
-            bubble.write(msg["content"])                # user / other roles
+        st.chat_message("user").write(msg["content"])
