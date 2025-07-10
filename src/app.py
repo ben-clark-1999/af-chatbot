@@ -134,4 +134,4 @@ with col2:
     """, unsafe_allow_html=True)
 
 # Hidden native Streamlit button to trigger Python callback
-st.button("HiddenSendTrigger", on_click=send, key="hidden", help="Hidden trigger button", disabled=True)
+# st.button("HiddenSendTrigger", on_click=send, key="hidden", help="Hidden trigger button", disabled=True)
