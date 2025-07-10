@@ -25,8 +25,8 @@ if not OPENAI_API_KEY:
     )
 
 openai_client = OpenAI(api_key=OPENAI_API_KEY)
-# ─────────────────────────────────────────────────────────────────────────────
 
+# strip proxies
 for var in (
     "HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY",
     "http_proxy", "https_proxy", "all_proxy",
@@ -102,10 +102,36 @@ for i, msg in enumerate(st.session_state.history[1:]):
     else:
         st.chat_message(msg["role"]).markdown(escape_md(msg["content"]))
 
-# ── INPUT FIELD + SEND BUTTON ────────────────────────────────────────────────
+# ── INPUT FIELD + TECH-STYLED SEND BUTTON ─────────────────────────────────────
 st.markdown("---")
 col1, col2 = st.columns([5, 1])
 with col1:
     st.text_input("Ask FitMate …", key="msg", placeholder="Type your question here...")
+
 with col2:
-    st.button("Send", on_click=send, use_container_width=True)
+    st.markdown("""
+        <style>
+        .send-button {
+            background: linear-gradient(135deg, #7e5bef, #5f27cd);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 0.6rem;
+            font-weight: 600;
+            font-size: 16px;
+            width: 100%;
+            cursor: pointer;
+            transition: all 0.2s ease-in-out;
+            box-shadow: 0 4px 14px rgba(94, 58, 255, 0.3);
+        }
+        .send-button:hover {
+            background: linear-gradient(135deg, #5f27cd, #341f97);
+            transform: translateY(-2px) scale(1.03);
+            box-shadow: 0 6px 20px rgba(94, 58, 255, 0.5);
+        }
+        </style>
+        <button class="send-button" onclick="document.querySelector('button[kind=primary]').click()">🚀 Send</button>
+    """, unsafe_allow_html=True)
+
+# Hidden native Streamlit button to trigger Python callback
+st.button("HiddenSendTrigger", on_click=send, key="hidden", help="Hidden trigger button", disabled=True)
