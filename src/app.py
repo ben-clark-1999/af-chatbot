@@ -52,10 +52,11 @@ if "history" not in st.session_state:
 # ── CHAT HANDLER ─────────────────────────────────────────────────────────────
 
 def send() -> None:
-    user = st.session_state.msg.strip()
+    user = st.session_state.get("msg", "").strip()
     if not user:
         return
-    st.session_state.msg = ""
+    st.session_state["msg"] = ""
+
     st.session_state.history.append({"role": "user", "content": user})
 
     if "thread_id" not in st.session_state:
