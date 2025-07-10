@@ -6,6 +6,11 @@ import streamlit as st
 from dotenv import load_dotenv
 from openai import OpenAI
 
+
+def escape_md(text: str) -> str:
+    """Back-slash stray * or _ so Markdown shows them literally."""
+    return re.sub(r'(?<!\\)([*_])', r'\\\1', text)
+
 # 1️⃣ local .env for dev
 load_dotenv()
 
@@ -96,14 +101,22 @@ def send() -> None:
 
 # ── CHAT UI ──────────────────────────────────────────────────────────────────
 for i, msg in enumerate(st.session_state.history[1:]):
-    if msg["role"] == "assistant" and i == len(st.session_state.history[1:]) - 1:
+    is_assistant = msg["role"] == "assistant"
+    is_last_assistant = is_assistant and i == len(st.session_state.history[1:]) - 1
+
+    # Assistant message with typing animation (last reply only)
+    if is_last_assistant:
         placeholder = st.chat_message("assistant").empty()
         animated = ""
         for ch in msg["content"]:
             animated += ch
-            placeholder.write(animated)          
+            placeholder.markdown(escape_md(animated))   # ⬅️ escape stray *_
             time.sleep(0.01)
-    else:
-        st.chat_message(msg["role"]).write(msg["content"])
 
-st.text_input("Ask FitMate …", key="msg", on_change=send)
+    # All earlier messages
+    else:
+        bubble = st.chat_message(msg["role"])
+        if is_assistant:
+            bubble.markdown(escape_md(msg["content"]))  # ⬅️ escape stray *_
+        else:
+            bubble.write(msg["content"])                # user / other roles
