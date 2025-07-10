@@ -125,52 +125,57 @@ if "history" not in st.session_state:
 # ── CHAT BACKEND ───────────────────────────────────────────────────────────
 
 def send() -> None:
-    """Handle a user message → call Assistant → append both sides to history."""
+    """Handle a user message → call Assistant → wait for run → append both sides to history."""
 
     user = st.session_state.msg.strip()
     if not user:
         return
     st.session_state.msg = ""  # clear input
-    st.session_state.history.append({"role": "user", "content": user})
 
     # ① create / reuse Assistant thread
     if "thread_id" not in st.session_state:
         thread = openai_client.beta.threads.create()
         st.session_state.thread_id = thread.id
 
+    # ② Add message to thread
     openai_client.beta.threads.messages.create(
         thread_id=st.session_state.thread_id,
-        role     ="user",
-        content  =user,
+        role="user",
+        content=user,
     )
 
+    # ③ Start run
     run = openai_client.beta.threads.runs.create(
-        thread_id    =st.session_state.thread_id,
-        assistant_id =open("ids/af_assistant_id.txt").read().strip(),
+        thread_id=st.session_state.thread_id,
+        assistant_id=open("ids/af_assistant_id.txt").read().strip(),
     )
 
-    # ② poll until GPT is done
+    # ④ Wait until run is complete
     while run.status in {"queued", "in_progress"}:
         time.sleep(0.4)
         run = openai_client.beta.threads.runs.retrieve(
             thread_id=st.session_state.thread_id,
-            run_id   =run.id,
+            run_id=run.id,
         )
 
-    # ③ fetch Assistant reply
+    # ⑤ Fetch assistant reply
     msgs = openai_client.beta.threads.messages.list(
         thread_id=st.session_state.thread_id,
-        order    ="asc",
+        order="asc",
     )
     assistant_msg = re.sub(r"【[^】]*】", "", msgs.data[-1].content[0].text.value).strip()
+
+    # ⑥ Append both user and assistant messages to local history
+    st.session_state.history.append({"role": "user", "content": user})
     st.session_state.history.append({"role": "assistant", "content": assistant_msg})
 
-    # ④ log to local CSV (persists only on dev machine / session)
+    # ⑦ Log locally
     log_path = os.path.abspath("logs/chat_log.csv")
     os.makedirs(os.path.dirname(log_path), exist_ok=True)
     with open(log_path, "a", newline="") as f:
         csv.writer(f).writerow([datetime.now(timezone.utc), user, assistant_msg])
     print(f"✅ Logged to {log_path}")
+
 
 # ── CHAT UI RENDER ─────────────────────────────────────────────────────────
 
