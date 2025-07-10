@@ -32,53 +32,52 @@ SYSTEM_PROMPT = open("data/af_prompt.txt").read().strip()
 VS_ID = open("ids/vector_store_id.txt").read().strip()
 
 st.set_page_config(page_title="FitMate", page_icon="💜")
-st.title("💜 FitMate – Anytime Fitness Assistant")
 
-# Custom background gradient (light version, similar to portfolio)
+# Global dark backdrop and centred phone-sized chat panel
 st.markdown("""
-    <style>
-    html, body, [data-testid="stAppViewContainer"] > .main {
-        background: linear-gradient(to bottom right, #faf5ff, #ffffff, #ebf8ff);
-        background-attachment: fixed;
-        color: #333;
-        font-family: 'Segoe UI', sans-serif;
-    }
-    [data-testid="stChatMessage"] .stMarkdown {
-        border-radius: 1.25rem;
-        padding: 0.75rem 1rem;
-        max-width: 85%;
-        font-size: 0.95rem;
-        line-height: 1.45;
-    }
-    [data-testid="stChatMessage"].assistant .stMarkdown {
-        margin-right: auto;
-        background: rgba(255, 255, 255, 0.75);
-        color: #111;
-        box-shadow: 0 1px 4px rgba(0,0,0,0.06);
-        backdrop-filter: blur(8px);
-    }
-    [data-testid="stChatMessage"].user .stMarkdown {
-        margin-left: auto;
-        background: linear-gradient(135deg, #a78bfa, #6366f1);
-        color: white;
-        box-shadow: 0 1px 4px rgba(0,0,0,0.12);
-    }
-    button[kind="secondary"] div {color: inherit !important;}
-    [data-testid="stChatInput"] {
-        background: white;
-        border-radius: 1rem;
-        border: 1px solid #ddd;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.04);
-    }
-    [data-testid="stChatInput"] textarea {
-        padding: 0.6rem 1rem;
-        min-height: 46px;
-        font-size: 0.9rem;
-        color: #222;
-    }
-</style>
-""", unsafe_allow_html=True)
+<style>
+html, body, [data-testid="stAppViewContainer"] > .main {
+  background:#0c0c10;
+  display:flex;justify-content:center;
+}
 
+/* Phone wrapper */
+section.chat-phone{width:390px;border:1px solid #2a2d34;border-radius:20px;
+  background:#111317;box-shadow:0 4px 16px rgba(0,0,0,.6);overflow:hidden;}
+
+/* Header */
+.chat-header{display:flex;align-items:center;gap:8px;padding:10px 14px;
+  background:#111317;border-bottom:1px solid #2a2d34;color:#f9f9f9;font-weight:600;}
+.chat-header .title{flex:1;font-size:14px;}
+.chat-header .icons{font-size:18px;color:#c2c5cc;cursor:pointer;}
+
+/* Chat bubbles */
+[data-testid="stChatMessage"] .stMarkdown{border-radius:16px;padding:0.75rem 1rem;
+  max-width:85%;font-size:0.95rem;line-height:1.45;}
+[data-testid="stChatMessage"].assistant .stMarkdown{margin-right:auto;background:#1c1e24;
+  color:#f3f4f6;border:1px solid #2a2d34;}
+[data-testid="stChatMessage"].user .stMarkdown{margin-left:auto;background:#ff5c00;color:#fff;}
+
+/* Input bar */
+[data-testid="stChatInput"]{background:#111317;border-top:1px solid #2a2d34;border-radius:0;}
+[data-testid="stChatInput"] textarea{background:transparent;color:#f3f4f6;}
+button[kind="secondary"]{background:#23262e;border:none;}
+button[kind="secondary"]:hover{background:#2d3038;}
+</style>
+""",unsafe_allow_html=True)
+
+# ---------------------- Phone wrapper start ------------------------------
+phone = st.container()
+phone.markdown(
+    """
+    <section class="chat-phone">
+      <div class="chat-header">
+        <span class="title">FitMate • AI Agent</span>
+        <div class="icons">⋮</div>
+      </div>
+    """,
+    unsafe_allow_html=True,
+)
 # Initialize session
 if "history" not in st.session_state:
     st.session_state.history = [
@@ -143,7 +142,9 @@ for i, msg in enumerate(st.session_state.history[1:]):
         st.chat_message(msg["role"]).markdown(escape_md(msg["content"]))
 
 # ── CHAT INPUT ─────────────────────────────────────────────────────────────
-prompt = st.chat_input("Ask FitMate …")
+prompt = st.chat_input("Type a message…")
 if prompt is not None:
     st.session_state.msg = prompt
     send()
+
+# ---------------------- Phone wrapper end ------------------------------
