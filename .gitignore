@@ -17,8 +17,9 @@ __pycache__/
 *.py[cod]
 *.log
 
-# ✅ Streamlit logs/state
-.streamlit/
+# ✅ Streamlit config and secrets
+!.streamlit/
+!.streamlit/config.toml
 !.streamlit/secrets.toml
 
 # ✅ Local data/logs
@@ -26,8 +27,5 @@ chat_log.csv
 logs/
 *.sqlite3
 
-
-
 # ✅ MacOS cruft
 .DS_Store
-.streamlit/secrets.toml
