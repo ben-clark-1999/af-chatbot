@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 import streamlit as st
 from dotenv import load_dotenv
 from openai import OpenAI
+import streamlit.components.v1 as components
 
 
 def escape_md(text: str) -> str:
@@ -25,16 +26,11 @@ if not OPENAI_API_KEY:
     )
 
 openai_client = OpenAI(api_key=OPENAI_API_KEY)
-# ─────────────────────────────────────────────────────────────────────────────
 
 # (optional) strip any proxy vars that might slow things down
 for var in (
-    "HTTP_PROXY",
-    "HTTPS_PROXY",
-    "ALL_PROXY",
-    "http_proxy",
-    "https_proxy",
-    "all_proxy",
+    "HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY",
+    "http_proxy", "https_proxy", "all_proxy",
 ):
     os.environ.pop(var, None)
 
@@ -45,6 +41,28 @@ VS_ID = open("ids/vector_store_id.txt").read().strip()
 st.set_page_config(page_title="FitMate", page_icon="💜")
 st.title("💜 FitMate – Anytime Fitness Assistant")
 
+# 💄 Custom CSS for send button
+st.markdown("""
+    <style>
+    div[data-testid="column"] button[kind="secondary"] {
+        border-radius: 999px;
+        background-color: #f0f0f0;
+        color: #000;
+        width: 42px;
+        height: 42px;
+        padding: 0;
+        font-size: 1.2rem;
+    }
+    div[data-testid="column"] button[kind="secondary"]:hover {
+        background-color: #e0e0e0;
+    }
+    input[type="text"] {
+        border-radius: 12px;
+    }
+    </style>
+""", unsafe_allow_html=True)
+
+# Session history
 if "history" not in st.session_state:
     st.session_state.history = [
         {"role": "system", "content": SYSTEM_PROMPT},
@@ -55,7 +73,6 @@ if "history" not in st.session_state:
     ]
 
 # ── CHAT HANDLER ─────────────────────────────────────────────────────────────
-
 def send() -> None:
     user = st.session_state.msg.strip()
     if not user:
@@ -104,14 +121,18 @@ for i, msg in enumerate(st.session_state.history[1:]):
     if msg["role"] == "assistant" and i == len(st.session_state.history[1:]) - 1:
         placeholder = st.chat_message("assistant").empty()
         animated = ""
-        animated = ""
         for ch in msg["content"]:
             animated += ch
             placeholder.markdown(escape_md(animated))
             time.sleep(0.01)
-
     else:
         st.chat_message(msg["role"]).markdown(escape_md(msg["content"]))
 
-
-st.text_input("Ask FitMate …", key="msg", on_change=send)
+# ── INPUT BOX + BUTTON ───────────────────────────────────────────────────────
+with st.container():
+    cols = st.columns([0.9, 0.1])
+    with cols[0]:
+        st.text_input("Ask FitMate …", key="msg", label_visibility="collapsed")
+    with cols[1]:
+        if st.button("➤", key="send_btn", help="Send"):
+            send()
