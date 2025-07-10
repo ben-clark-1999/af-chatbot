@@ -2,3 +2,8 @@
 enableCORS = false
 enableXsrfProtection = false
 allowEmbed = true
+
+[theme]
+base = "light"
+primaryColor = "#8b5cf6"
+font = "sans serif"
