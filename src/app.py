@@ -130,10 +130,13 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-col1, col2 = st.columns([5, 1])
-with col1:
-    st.text_input("Ask FitMate …", key="msg", placeholder="Type your question here...")
+with st.form(key="chat_form", clear_on_submit=True):
+    col1, col2 = st.columns([5, 1])
+    with col1:
+        user_input = st.text_input("Ask FitMate …", key="msg", placeholder="Type your question here...")
+    with col2:
+        submitted = st.form_submit_button("🚀", type="primary")
 
-with col2:
-    if st.button("🚀 Send"):
-        send()
+if submitted:
+    send()
+
