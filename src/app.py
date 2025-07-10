@@ -33,15 +33,11 @@ VS_ID = open("ids/vector_store_id.txt").read().strip()
 
 st.set_page_config(page_title="FitMate", page_icon="💜")
 
-# Inject modern, soft-themed styles
+# Inject professional styles
 st.markdown("""
     <style>
-    html, body, [data-testid="stAppViewContainer"] > .main {
-        background: linear-gradient(to bottom right, #f3e8ff, #f0f9ff);
-        color: #333;
-        font-family: 'Segoe UI', sans-serif;
-    }
     header[data-testid="stHeader"], #MainMenu, footer {visibility: hidden;}
+    [data-testid="stAppViewContainer"] > .main {padding-top: 1rem;}
     [data-testid="stChatMessage"] .stMarkdown {
         border-radius: 1.25rem;
         padding: 0.75rem 1rem;
@@ -51,29 +47,22 @@ st.markdown("""
     }
     [data-testid="stChatMessage"].assistant .stMarkdown {
         margin-right: auto;
-        background: rgba(255, 255, 255, 0.7);
-        color: #111;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-        backdrop-filter: blur(8px);
+        background: #f5f5f5;
+        color: #333;
+        box-shadow: 0 1px 4px rgba(0,0,0,0.06);
     }
     [data-testid="stChatMessage"].user .stMarkdown {
         margin-left: auto;
-        background: linear-gradient(135deg, #a78bfa, #6366f1);
-        color: white;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+        background: linear-gradient(135deg,#8f5bea,#6a39d7);
+        color: #fff;
+        box-shadow: 0 1px 4px rgba(0,0,0,0.12);
     }
     button[kind="secondary"] div {color: inherit !important;}
-    [data-testid="stChatInput"] {
-        background: white;
-        border-radius: 1rem;
-        border: 1px solid #ddd;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.04);
-    }
+    [data-testid="stChatInput"] {background: #fff; border-radius: 1rem;}
     [data-testid="stChatInput"] textarea {
         padding: 0.6rem 1rem;
         min-height: 46px;
         font-size: 0.9rem;
-        color: #222;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -150,4 +139,3 @@ for i, msg in enumerate(st.session_state.history[1:]):
 prompt = st.chat_input("Ask FitMate …")
 if prompt is not None:
     st.session_state.msg = prompt
-    send()
