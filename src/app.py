@@ -106,7 +106,9 @@ for i, msg in enumerate(st.session_state.history[1:]):
         animated = ""
         for ch in msg["content"]:
             animated += ch
-            placeholder.markdown(escape_md(animated))  # ← FIXED LINE
+            placeholder.write(animated)          
             time.sleep(0.01)
     else:
-        st.chat_message(msg["role"]).markdown(escape_md(msg["content"]))  # ← FIXED LINE
+        st.chat_message(msg["role"]).write(msg["content"])
+
+st.text_input("Ask FitMate …", key="msg", on_change=send)
