@@ -11,11 +11,12 @@ def escape_md(text: str) -> str:
     """Back-slash stray * or _ so Markdown shows them literally."""
     return re.sub(r'(?<!\\)([*_])', r'\\\1', text)
 
-# 1️⃣ Load .env for local dev
+# 1️⃣ local .env for dev
 load_dotenv()
 
-# 2️⃣ Secrets from cloud or local fallback
+# 2️⃣ read secrets (cloud) → fallback to env (local)
 OPENAI_API_KEY = st.secrets.get("OPENAI_API_KEY", os.getenv("OPENAI_API_KEY"))
+
 if not OPENAI_API_KEY:
     raise RuntimeError(
         "❌ OPENAI_API_KEY is missing.\n"
@@ -24,15 +25,20 @@ if not OPENAI_API_KEY:
     )
 
 openai_client = OpenAI(api_key=OPENAI_API_KEY)
+# ─────────────────────────────────────────────────────────────────────────────
 
-# Strip proxies
+# (optional) strip any proxy vars that might slow things down
 for var in (
-    "HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY",
-    "http_proxy", "https_proxy", "all_proxy",
+    "HTTP_PROXY",
+    "HTTPS_PROXY",
+    "ALL_PROXY",
+    "http_proxy",
+    "https_proxy",
+    "all_proxy",
 ):
     os.environ.pop(var, None)
 
-# ── INIT ──────────────────────────────────────────────────────────────────────
+# ── STREAMLIT PAGE INIT ─────────────────────────────────────────────────────
 SYSTEM_PROMPT = open("data/af_prompt.txt").read().strip()
 VS_ID = open("ids/vector_store_id.txt").read().strip()
 
@@ -51,13 +57,13 @@ if "history" not in st.session_state:
 # ── CHAT HANDLER ─────────────────────────────────────────────────────────────
 
 def send() -> None:
-    user = st.session_state.get("msg", "").strip()
+    user = st.session_state.msg.strip()
     if not user:
         return
-
-    st.session_state["msg"] = ""
+    st.session_state.msg = ""
     st.session_state.history.append({"role": "user", "content": user})
 
+    # ① create / reuse Assistant thread
     if "thread_id" not in st.session_state:
         thread = openai_client.beta.threads.create()
         st.session_state.thread_id = thread.id
@@ -72,18 +78,21 @@ def send() -> None:
         assistant_id=open("ids/af_assistant_id.txt").read().strip(),
     )
 
+    # ② poll until GPT is done
     while run.status in {"queued", "in_progress"}:
         time.sleep(0.4)
         run = openai_client.beta.threads.runs.retrieve(
             thread_id=st.session_state.thread_id, run_id=run.id
         )
 
+    # ③ fetch Assistant reply
     msgs = openai_client.beta.threads.messages.list(
         thread_id=st.session_state.thread_id, order="asc"
     )
     assistant_msg = re.sub(r"【[^】]*】", "", msgs.data[-1].content[0].text.value).strip()
     st.session_state.history.append({"role": "assistant", "content": assistant_msg})
 
+    # ④ append to local CSV (persists only on your machine / session)
     log_path = os.path.abspath("logs/chat_log.csv")
     os.makedirs(os.path.dirname(log_path), exist_ok=True)
     with open(log_path, "a", newline="") as f:
@@ -91,67 +100,18 @@ def send() -> None:
     print(f"✅ Logged to {log_path}")
 
 # ── CHAT UI ──────────────────────────────────────────────────────────────────
-
 for i, msg in enumerate(st.session_state.history[1:]):
     if msg["role"] == "assistant" and i == len(st.session_state.history[1:]) - 1:
         placeholder = st.chat_message("assistant").empty()
+        animated = ""
         animated = ""
         for ch in msg["content"]:
             animated += ch
             placeholder.markdown(escape_md(animated))
             time.sleep(0.01)
+
     else:
         st.chat_message(msg["role"]).markdown(escape_md(msg["content"]))
 
-# ── INPUT FIELD + TECH-STYLED SEND BUTTON ─────────────────────────────────────
 
-st.markdown("---")
-col1, col2 = st.columns([5, 1])
-
-with col1:
-    st.text_input("Ask FitMate …", key="msg", placeholder="Type your question here...")
-
-with col2:
-    st.markdown(
-        """
-        <style>
-        .send-button {
-            background: linear-gradient(135deg, #7e5bef, #5f27cd);
-            color: white;
-            border: none;
-            border-radius: 8px;
-            padding: 0.6rem;
-            font-weight: 600;
-            font-size: 16px;
-            width: 100%;
-            cursor: pointer;
-            transition: all 0.2s ease-in-out;
-            box-shadow: 0 4px 14px rgba(94, 58, 255, 0.3);
-        }
-        .send-button:hover {
-            background: linear-gradient(135deg, #5f27cd, #341f97);
-            transform: translateY(-2px) scale(1.03);
-            box-shadow: 0 6px 20px rgba(94, 58, 255, 0.5);
-        }
-        </style>
-        <button class="send-button" onclick="window.dispatchEvent(new Event('send-message'))">🚀 Send</button>
-        """,
-        unsafe_allow_html=True,
-    )
-
-# hidden button triggered via JS
-if st.button("HiddenSendTrigger", key="hidden", help="hidden", on_click=send, disabled=False):
-    pass
-
-# JS to forward "send-message" event to click the Streamlit button
-st.markdown(
-    """
-    <script>
-    window.addEventListener("send-message", () => {
-        const hiddenBtn = window.parent.document.querySelector('button[title="hidden"]');
-        if (hiddenBtn) hiddenBtn.click();
-    });
-    </script>
-    """,
-    unsafe_allow_html=True,
-)
+st.text_input("Ask FitMate …", key="msg", on_change=send)
