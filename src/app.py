@@ -101,7 +101,7 @@ for i, msg in enumerate(st.session_state.history[1:]):
         animated = ""
         for ch in msg["content"]:
             animated += ch
-            placeholder.markdown(animated)
+            placeholder.write(animated)          
             time.sleep(0.01)
     else:
         st.chat_message(msg["role"]).write(msg["content"])
