@@ -1,21 +1,40 @@
-# ────────────────────────────────────────────────────────────────────────────
-# app.py – FitMate  •  Anytime Fitness Assistant
-# ────────────────────────────────────────────────────────────────────────────
-import os, csv, re, time
+# ── FitMate • app.py ────────────────────────────────────────────────────────
+import os, csv, re, time, html
 from datetime import datetime, timezone
 
 import streamlit as st
 from dotenv import load_dotenv
 from openai import OpenAI
 
-# ── helpers ────────────────────────────────────────────────────────────────
+
+# ── text helpers ────────────────────────────────────────────────────────────
 def escape_md(txt: str) -> str:
-    """Back-slash stray * / _ so Markdown shows them literally."""
+    """Back-slash stray * or _ so Markdown shows them literally."""
     return re.sub(r"(?<!\\)([*_])", r"\\\1", txt)
 
 
+def clean(txt: str) -> str:
+    """
+    • normalises dash / hyphen weirdness that broke the cost answers
+    • leaves everything else intact
+    """
+    txt = txt.replace("\u2011", "-")                    # non-breaking hyphen → normal
+    txt = re.sub(r"[\u2013\u2014]", " — ", txt)        # en/em dash → space-dash-space
+    txt = re.sub(r"\s{2,}", " ", txt)                  # collapse double spaces
+    return txt.strip()
+
+
+def render_msg(container, role: str, content: str) -> None:
+    """Write plain text with safe HTML so spaces & wrapping are preserved."""
+    safe = html.escape(content)
+    container.markdown(
+        f'<div style="white-space:pre-wrap;line-height:1.55">{safe}</div>',
+        unsafe_allow_html=True,
+    )
+
+
+# ── OpenAI call ─────────────────────────────────────────────────────────────
 def call_assistant(user_msg: str) -> str:
-    """Send *user_msg* ➜ Assistants API ➜ return plain-text reply."""
     if "thread_id" not in st.session_state:
         st.session_state.thread_id = openai_client.beta.threads.create().id
 
@@ -35,14 +54,14 @@ def call_assistant(user_msg: str) -> str:
             thread_id=st.session_state.thread_id, run_id=run.id
         )
 
-    msgs = openai_client.beta.threads.messages.list(
+    raw = openai_client.beta.threads.messages.list(
         thread_id=st.session_state.thread_id, order="asc"
-    )
-    raw = msgs.data[-1].content[0].text.value          # last assistant turn
-    return re.sub(r"【[^】]*】", "", raw).strip()
+    ).data[-1].content[0].text.value
+
+    return clean(raw)
 
 
-def log_interaction(q: str, a: str) -> None:
+def log(q: str, a: str) -> None:
     path = "logs/chat_log.csv"
     os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path, "a", newline="") as f:
@@ -51,16 +70,14 @@ def log_interaction(q: str, a: str) -> None:
 
 # ── one-time setup ──────────────────────────────────────────────────────────
 load_dotenv()
-OPENAI_API_KEY = st.secrets.get("OPENAI_API_KEY", os.getenv("OPENAI_API_KEY"))
-if not OPENAI_API_KEY:
+key = st.secrets.get("OPENAI_API_KEY", os.getenv("OPENAI_API_KEY"))
+if not key:
     raise RuntimeError("❌ OPENAI_API_KEY is missing.")
+openai_client = OpenAI(api_key=key)
 
-# strip proxy vars that slow things down
-for var in ("HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY",
-            "http_proxy", "https_proxy", "all_proxy"):
-    os.environ.pop(var, None)
-
-openai_client = OpenAI(api_key=OPENAI_API_KEY)
+for v in ("HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY",
+          "http_proxy", "https_proxy", "all_proxy"):
+    os.environ.pop(v, None)
 
 SYSTEM_PROMPT = open("data/af_prompt.txt").read().strip()
 
@@ -70,61 +87,57 @@ st.title("💜 FitMate – Anytime Fitness Assistant")
 if "history" not in st.session_state:
     st.session_state.history = [
         {"role": "system", "content": SYSTEM_PROMPT},
-        {
-            "role": "assistant",
-            "content": (
-                "Hi! I'm FitMate 👋\n\n"
-                "Ask me anything about Anytime Fitness — locations, billing, "
-                "gym hours — or general fitness guidance."
-            ),
-        },
+        {"role": "assistant",
+         "content": ("Hi! I'm FitMate 👋\n\n"
+                     "Ask me anything about Anytime Fitness — locations, "
+                     "billing, gym hours — or general fitness guidance.")},
     ]
-if "greeted" not in st.session_state:   # has the greeting been animated yet?
-    st.session_state.greeted = False
 
-# ── page-wide styles ────────────────────────────────────────────────────────
+# ── chat transcript ────────────────────────────────────────────────────────
+for idx, msg in enumerate(st.session_state.history[1:]):
+    box = st.chat_message(msg["role"])
+    # stream ONLY the very first assistant banner once per session
+    if (msg["role"] == "assistant"
+            and idx == 0
+            and not st.session_state.get("intro_done")):
+        ph = box.empty()
+        buf = ""
+        for ch in msg["content"]:
+            buf += ch
+            render_msg(ph, "assistant", buf)
+            time.sleep(0.01)
+        st.session_state.intro_done = True
+    else:
+        render_msg(box, msg["role"], msg["content"])
+
+st.markdown("---")
+
+# ── CSS tweaks ──────────────────────────────────────────────────────────────
 st.markdown(
     """
     <style>
-      /* nicer send button */
+      button[data-baseweb="button"] span { font-size:1.25rem }
       .animated-send{
         background:linear-gradient(135deg,#7e5bef,#5f27cd);
-        color:#fff;border:none;border-radius:8px;font-weight:600;
-        font-size:20px;cursor:pointer;width:100%;height:55px;
+        color:#fff;border:none;border-radius:8px;
+        font-weight:600;font-size:20px;cursor:pointer;
+        width:100%;height:55px;
         transition:transform .15s,box-shadow .2s;
         box-shadow:0 4px 12px rgba(94,58,255,.3);
       }
       .animated-send:active{
-        transform:scale(.93);box-shadow:0 2px 6px rgba(94,58,255,.6);
+        transform:scale(.93);
+        box-shadow:0 2px 6px rgba(94,58,255,.6);
       }
-      /* wrap long lines / hyperlinks */
-      [data-testid="stChatMessage"] .markdown-text-container{
-        white-space:pre-wrap;word-wrap:break-word;overflow-wrap:anywhere;
-      }
+      /* neat blinking cursor for the typing placeholder */
+      @keyframes pulse{0%{opacity:0}50%{opacity:1}100%{opacity:0}}
+      .blinker{font-weight:600;animation:pulse 1s infinite}
     </style>
     """,
     unsafe_allow_html=True,
 )
 
-# ── show chat history ───────────────────────────────────────────────────────
-for idx, msg in enumerate(st.session_state.history[1:]):   # skip system prompt
-    role, content = msg["role"], msg["content"]
-
-    # animate the very first assistant greeting once
-    if idx == 0 and role == "assistant" and not st.session_state.greeted:
-        ph = st.chat_message("assistant").empty()
-        buf = ""
-        for ch in content:
-            buf += ch
-            ph.markdown(escape_md(buf))
-            time.sleep(0.01)
-        st.session_state.greeted = True
-    else:
-        st.chat_message(role).markdown(escape_md(content))
-
-st.markdown("---")
-
-# ── input + 🚀 button (single form keeps them aligned) ──────────────────────
+# ── input + button (single <form>) ──────────────────────────────────────────
 with st.form("chat_form", clear_on_submit=True):
     col1, col2 = st.columns([5, 1], gap="small")
 
@@ -137,33 +150,38 @@ with st.form("chat_form", clear_on_submit=True):
 
     with col2:
         submitted = st.form_submit_button(
-            "🚀", help="Send", type="primary", use_container_width=True
+            "🚀",
+            use_container_width=True,
+            help="Send",
+            type="primary",
+            css_class="animated-send",
         )
 
-    # ── on submit ───────────────────────────────────────────────────────────
+    # ── handle submission ──────────────────────────────────────────────────
     if submitted and user_input.strip():
-        question = user_input.strip()
+        # 1️⃣ show the user's message immediately
+        render_msg(st.chat_message("user"), "user",
+                   escape_md(user_input.strip()))
 
-        # immediate echo of the user message
-        st.chat_message("user").markdown(escape_md(question))
+        # 2️⃣ assistant typing placeholder
+        ph = st.chat_message("assistant").empty()
+        ph.markdown("*typing <span class='blinker'>▋</span>*",
+                    unsafe_allow_html=True)
 
-        # placeholder for assistant typing animation
-        typing_placeholder = st.chat_message("assistant").empty()
-        typing_placeholder.markdown("_typing …_")  # NB: narrow non-breaking space
+        # 3️⃣ call OpenAI
+        assistant_reply = call_assistant(user_input.strip())
 
-        # call OpenAI → get reply
-        answer = call_assistant(question)
-
-        # type out reply char-by-char
-        rendered = ""
-        for ch in answer:
-            rendered += ch
-            typing_placeholder.markdown(escape_md(rendered))
+        # 4️⃣ stream characters
+        typed = ""
+        for ch in assistant_reply:
+            typed += ch
+            render_msg(ph, "assistant", typed)
             time.sleep(0.01)
 
-        # save to session + optional log
+        # 5️⃣ persist + log
         st.session_state.history.extend([
-            {"role": "user", "content": question},
-            {"role": "assistant", "content": answer},
+            {"role": "user", "content": user_input.strip()},
+            {"role": "assistant", "content": assistant_reply},
         ])
-        log_interaction(question, answer)
+        log(user_input.strip(), assistant_reply)
+        st.experimental_rerun()  # make sure transcript is in order
