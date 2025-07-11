@@ -98,10 +98,10 @@ for i, msg in enumerate(st.session_state.history[1:]):
     else:
         st.chat_message(msg["role"]).markdown(escape_md(msg["content"]))
 
-# ── INPUT FIELD + STYLED SEND BUTTON ─────────────────────────────────────────
+# INPUT FIELD + SEND BUTTON (Animated)
 st.markdown("---")
 
-# Inject animated button styling
+# Inject button styling
 st.markdown("""
 <style>
 .animated-send {
@@ -130,8 +130,5 @@ with col1:
 
 with col2:
     if st.button("🚀", key="send_btn"):
-        send()
-        st.markdown(
-            "<script>document.querySelector('input[data-testid=\"stTextInput\"]')?.focus()</script>",
-            unsafe_allow_html=True
-        )
+        if st.session_state.msg.strip():
+            send()
