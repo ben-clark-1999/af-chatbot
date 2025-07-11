@@ -1,5 +1,5 @@
 # ────────────────────────────────────────────────────────────────────────────
-# app.py  –  FitMate • Anytime Fitness Assistant
+# app.py – FitMate  •  Anytime Fitness Assistant
 # ────────────────────────────────────────────────────────────────────────────
 import os, csv, re, time
 from datetime import datetime, timezone
@@ -8,16 +8,14 @@ import streamlit as st
 from dotenv import load_dotenv
 from openai import OpenAI
 
-
-# ── helper utilities ────────────────────────────────────────────────────────
+# ── helpers ────────────────────────────────────────────────────────────────
 def escape_md(txt: str) -> str:
     """Back-slash stray * / _ so Markdown shows them literally."""
     return re.sub(r"(?<!\\)([*_])", r"\\\1", txt)
 
 
 def call_assistant(user_msg: str) -> str:
-    """Send *user_msg* to the OpenAI Assistants API ➜ return plain-text reply."""
-    # one thread per browser session
+    """Send *user_msg* ➜ Assistants API ➜ return plain-text reply."""
     if "thread_id" not in st.session_state:
         st.session_state.thread_id = openai_client.beta.threads.create().id
 
@@ -26,13 +24,11 @@ def call_assistant(user_msg: str) -> str:
         role="user",
         content=user_msg,
     )
-
     run = openai_client.beta.threads.runs.create(
         thread_id=st.session_state.thread_id,
         assistant_id=open("ids/af_assistant_id.txt").read().strip(),
     )
 
-    # poll until the run is finished
     while run.status in {"queued", "in_progress"}:
         time.sleep(0.4)
         run = openai_client.beta.threads.runs.retrieve(
@@ -42,16 +38,15 @@ def call_assistant(user_msg: str) -> str:
     msgs = openai_client.beta.threads.messages.list(
         thread_id=st.session_state.thread_id, order="asc"
     )
-    raw = msgs.data[-1].content[0].text.value
+    raw = msgs.data[-1].content[0].text.value          # last assistant turn
     return re.sub(r"【[^】]*】", "", raw).strip()
 
 
-def log_interaction(question: str, answer: str) -> None:
-    """Append Q/A to a local CSV log (optional)."""
+def log_interaction(q: str, a: str) -> None:
     path = "logs/chat_log.csv"
     os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path, "a", newline="") as f:
-        csv.writer(f).writerow([datetime.now(timezone.utc), question, answer])
+        csv.writer(f).writerow([datetime.now(timezone.utc), q, a])
 
 
 # ── one-time setup ──────────────────────────────────────────────────────────
@@ -60,7 +55,7 @@ OPENAI_API_KEY = st.secrets.get("OPENAI_API_KEY", os.getenv("OPENAI_API_KEY"))
 if not OPENAI_API_KEY:
     raise RuntimeError("❌ OPENAI_API_KEY is missing.")
 
-# strip any proxy vars that slow things down
+# strip proxy vars that slow things down
 for var in ("HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY",
             "http_proxy", "https_proxy", "all_proxy"):
     os.environ.pop(var, None)
@@ -84,15 +79,14 @@ if "history" not in st.session_state:
             ),
         },
     ]
+if "greeted" not in st.session_state:   # has the greeting been animated yet?
+    st.session_state.greeted = False
 
-# ── global styles (button, chat box, word-wrapping) ────────────────────────
+# ── page-wide styles ────────────────────────────────────────────────────────
 st.markdown(
     """
     <style>
-      .chat-box{
-        border:1px solid var(--secondaryBackground);border-radius:12px;
-        padding:1.2rem 1rem;background:#fff;
-      }
+      /* nicer send button */
       .animated-send{
         background:linear-gradient(135deg,#7e5bef,#5f27cd);
         color:#fff;border:none;border-radius:8px;font-weight:600;
@@ -103,7 +97,7 @@ st.markdown(
       .animated-send:active{
         transform:scale(.93);box-shadow:0 2px 6px rgba(94,58,255,.6);
       }
-      /* wrap long lines / urls inside chat bubbles */
+      /* wrap long lines / hyperlinks */
       [data-testid="stChatMessage"] .markdown-text-container{
         white-space:pre-wrap;word-wrap:break-word;overflow-wrap:anywhere;
       }
@@ -112,59 +106,64 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# ── MAIN CONTAINER ▸ chat panel + input row ────────────────────────────────
-with st.container():
-    st.markdown('<div class="chat-box">', unsafe_allow_html=True)
+# ── show chat history ───────────────────────────────────────────────────────
+for idx, msg in enumerate(st.session_state.history[1:]):   # skip system prompt
+    role, content = msg["role"], msg["content"]
 
-    # display the entire conversation so far (skip system prompt)
-    for msg in st.session_state.history[1:]:
-        st.chat_message(msg["role"]).markdown(escape_md(msg["content"]))
+    # animate the very first assistant greeting once
+    if idx == 0 and role == "assistant" and not st.session_state.greeted:
+        ph = st.chat_message("assistant").empty()
+        buf = ""
+        for ch in content:
+            buf += ch
+            ph.markdown(escape_md(buf))
+            time.sleep(0.01)
+        st.session_state.greeted = True
+    else:
+        st.chat_message(role).markdown(escape_md(content))
 
-    # single form keeps input + button aligned and clears after submit
-    with st.form("chat_form", clear_on_submit=True):
-        col1, col2 = st.columns([5, 1], gap="small")
+st.markdown("---")
 
-        with col1:
-            user_input = st.text_input(
-                "Ask FitMate …",
-                placeholder="Type your question here…",
-                label_visibility="collapsed",
-            )
+# ── input + 🚀 button (single form keeps them aligned) ──────────────────────
+with st.form("chat_form", clear_on_submit=True):
+    col1, col2 = st.columns([5, 1], gap="small")
 
-        with col2:
-            submitted = st.form_submit_button(
-                "🚀",
-                help="Send",
-                type="primary",
-                use_container_width=True,
-            )
+    with col1:
+        user_input = st.text_input(
+            "Ask FitMate …",
+            placeholder="Type your question here…",
+            label_visibility="collapsed",
+        )
 
-        # ── when the user hits Enter or taps 🚀 ────────────────────────────
-        if submitted and user_input.strip():
-            question = user_input.strip()
+    with col2:
+        submitted = st.form_submit_button(
+            "🚀", help="Send", type="primary", use_container_width=True
+        )
 
-            # 1️⃣ show the user's message immediately
-            st.chat_message("user").markdown(escape_md(question))
+    # ── on submit ───────────────────────────────────────────────────────────
+    if submitted and user_input.strip():
+        question = user_input.strip()
 
-            # 2️⃣ show a live "typing…" placeholder
-            placeholder = st.chat_message("assistant").empty()
-            placeholder.markdown("_typing …_")
+        # immediate echo of the user message
+        st.chat_message("user").markdown(escape_md(question))
 
-            # 3️⃣ fetch assistant reply (blocking)
-            answer = call_assistant(question)
+        # placeholder for assistant typing animation
+        typing_placeholder = st.chat_message("assistant").empty()
+        typing_placeholder.markdown("_typing …_")  # NB: narrow non-breaking space
 
-            # 4️⃣ stream the reply character-by-character
-            rendered = ""
-            for ch in answer:
-                rendered += ch
-                placeholder.markdown(escape_md(rendered))
-                time.sleep(0.01)
+        # call OpenAI → get reply
+        answer = call_assistant(question)
 
-            # 5️⃣ store in session + optional CSV log
-            st.session_state.history.extend([
-                {"role": "user", "content": question},
-                {"role": "assistant", "content": answer},
-            ])
-            log_interaction(question, answer)
+        # type out reply char-by-char
+        rendered = ""
+        for ch in answer:
+            rendered += ch
+            typing_placeholder.markdown(escape_md(rendered))
+            time.sleep(0.01)
 
-    st.markdown('</div>', unsafe_allow_html=True)  # close .chat-box
+        # save to session + optional log
+        st.session_state.history.extend([
+            {"role": "user", "content": question},
+            {"role": "assistant", "content": answer},
+        ])
+        log_interaction(question, answer)
