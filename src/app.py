@@ -116,8 +116,7 @@ st.markdown("---")
 st.markdown(
     """
     <style>
-      button[data-baseweb="button"] span { font-size:1.25rem }
-      .animated-send{
+      div.stButton > button:first-child {
         background:linear-gradient(135deg,#7e5bef,#5f27cd);
         color:#fff;border:none;border-radius:8px;
         font-weight:600;font-size:20px;cursor:pointer;
@@ -125,11 +124,10 @@ st.markdown(
         transition:transform .15s,box-shadow .2s;
         box-shadow:0 4px 12px rgba(94,58,255,.3);
       }
-      .animated-send:active{
+      div.stButton > button:first-child:active {
         transform:scale(.93);
         box-shadow:0 2px 6px rgba(94,58,255,.6);
       }
-      /* neat blinking cursor for the typing placeholder */
       @keyframes pulse{0%{opacity:0}50%{opacity:1}100%{opacity:0}}
       .blinker{font-weight:600;animation:pulse 1s infinite}
     </style>
@@ -152,36 +150,23 @@ with st.form("chat_form", clear_on_submit=True):
         submitted = st.form_submit_button(
             "🚀",
             use_container_width=True,
-            help="Send",
-            type="primary",
-            css_class="animated-send",
+            help="Send"
         )
 
     # ── handle submission ──────────────────────────────────────────────────
     if submitted and user_input.strip():
-        # 1️⃣ show the user's message immediately
-        render_msg(st.chat_message("user"), "user",
-                   escape_md(user_input.strip()))
-
-        # 2️⃣ assistant typing placeholder
+        render_msg(st.chat_message("user"), "user", escape_md(user_input.strip()))
         ph = st.chat_message("assistant").empty()
-        ph.markdown("*typing <span class='blinker'>▋</span>*",
-                    unsafe_allow_html=True)
-
-        # 3️⃣ call OpenAI
+        ph.markdown("*typing <span class='blinker'>▋</span>*", unsafe_allow_html=True)
         assistant_reply = call_assistant(user_input.strip())
-
-        # 4️⃣ stream characters
         typed = ""
         for ch in assistant_reply:
             typed += ch
             render_msg(ph, "assistant", typed)
             time.sleep(0.01)
-
-        # 5️⃣ persist + log
         st.session_state.history.extend([
             {"role": "user", "content": user_input.strip()},
             {"role": "assistant", "content": assistant_reply},
         ])
         log(user_input.strip(), assistant_reply)
-        st.experimental_rerun()  # make sure transcript is in order
+        st.experimental_rerun()
