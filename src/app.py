@@ -58,6 +58,9 @@ def call_assistant(user_msg: str) -> str:
         thread_id=st.session_state.thread_id, order="asc"
     ).data[-1].content[0].text.value
 
+    # Remove citations like  
+    raw = re.sub(r"【\d+:\d+†[^】]+】", "", raw)
+
     return clean(raw)
 
 
@@ -96,7 +99,6 @@ if "history" not in st.session_state:
 # ── chat transcript ────────────────────────────────────────────────────────
 for idx, msg in enumerate(st.session_state.history[1:]):
     box = st.chat_message(msg["role"])
-    # stream ONLY the very first assistant banner once per session
     if (msg["role"] == "assistant"
             and idx == 0
             and not st.session_state.get("intro_done")):
@@ -153,7 +155,6 @@ with st.form("chat_form", clear_on_submit=True):
             help="Send"
         )
 
-    # ── handle submission ──────────────────────────────────────────────────
     if submitted and user_input.strip():
         render_msg(st.chat_message("user"), "user", escape_md(user_input.strip()))
         ph = st.chat_message("assistant").empty()
