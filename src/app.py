@@ -1,11 +1,9 @@
-# ── top of app.py ────────────────────────────────────────────────────────────
 import os, csv, re, time
 from datetime import datetime, timezone
 
 import streamlit as st
 from dotenv import load_dotenv
 from openai import OpenAI
-
 
 def escape_md(text: str) -> str:
     """Back-slash stray * or _ so Markdown shows them literally."""
@@ -16,7 +14,6 @@ load_dotenv()
 
 # 2️⃣ read secrets (cloud) → fallback to env (local)
 OPENAI_API_KEY = st.secrets.get("OPENAI_API_KEY", os.getenv("OPENAI_API_KEY"))
-
 if not OPENAI_API_KEY:
     raise RuntimeError(
         "❌ OPENAI_API_KEY is missing.\n"
@@ -25,16 +22,11 @@ if not OPENAI_API_KEY:
     )
 
 openai_client = OpenAI(api_key=OPENAI_API_KEY)
-# ─────────────────────────────────────────────────────────────────────────────
 
-# (optional) strip any proxy vars that might slow things down
+# Strip any proxy vars
 for var in (
-    "HTTP_PROXY",
-    "HTTPS_PROXY",
-    "ALL_PROXY",
-    "http_proxy",
-    "https_proxy",
-    "all_proxy",
+    "HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY",
+    "http_proxy", "https_proxy", "all_proxy",
 ):
     os.environ.pop(var, None)
 
@@ -55,7 +47,6 @@ if "history" not in st.session_state:
     ]
 
 # ── CHAT HANDLER ─────────────────────────────────────────────────────────────
-
 def send() -> None:
     user = st.session_state.msg.strip()
     if not user:
@@ -63,7 +54,6 @@ def send() -> None:
     st.session_state.msg = ""
     st.session_state.history.append({"role": "user", "content": user})
 
-    # ① create / reuse Assistant thread
     if "thread_id" not in st.session_state:
         thread = openai_client.beta.threads.create()
         st.session_state.thread_id = thread.id
@@ -78,21 +68,18 @@ def send() -> None:
         assistant_id=open("ids/af_assistant_id.txt").read().strip(),
     )
 
-    # ② poll until GPT is done
     while run.status in {"queued", "in_progress"}:
         time.sleep(0.4)
         run = openai_client.beta.threads.runs.retrieve(
             thread_id=st.session_state.thread_id, run_id=run.id
         )
 
-    # ③ fetch Assistant reply
     msgs = openai_client.beta.threads.messages.list(
         thread_id=st.session_state.thread_id, order="asc"
     )
     assistant_msg = re.sub(r"【[^】]*】", "", msgs.data[-1].content[0].text.value).strip()
     st.session_state.history.append({"role": "assistant", "content": assistant_msg})
 
-    # ④ append to local CSV (persists only on your machine / session)
     log_path = os.path.abspath("logs/chat_log.csv")
     os.makedirs(os.path.dirname(log_path), exist_ok=True)
     with open(log_path, "a", newline="") as f:
@@ -104,14 +91,47 @@ for i, msg in enumerate(st.session_state.history[1:]):
     if msg["role"] == "assistant" and i == len(st.session_state.history[1:]) - 1:
         placeholder = st.chat_message("assistant").empty()
         animated = ""
-        animated = ""
         for ch in msg["content"]:
             animated += ch
             placeholder.markdown(escape_md(animated))
             time.sleep(0.01)
-
     else:
         st.chat_message(msg["role"]).markdown(escape_md(msg["content"]))
 
+# ── INPUT FIELD + STYLED SEND BUTTON ─────────────────────────────────────────
+st.markdown("---")
 
-st.text_input("Ask FitMate …", key="msg", on_change=send)
+# Inject animated button styling
+st.markdown("""
+<style>
+.animated-send {
+    background: linear-gradient(135deg, #7e5bef, #5f27cd);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 0.6rem 1rem;
+    font-weight: 600;
+    font-size: 16px;
+    width: 100%;
+    cursor: pointer;
+    transition: transform 0.15s ease-in-out, box-shadow 0.2s;
+    box-shadow: 0 4px 12px rgba(94, 58, 255, 0.3);
+}
+.animated-send:active {
+    transform: scale(0.94);
+    box-shadow: 0 2px 6px rgba(94, 58, 255, 0.6);
+}
+</style>
+""", unsafe_allow_html=True)
+
+col1, col2 = st.columns([5, 1])
+with col1:
+    st.text_input("Ask FitMate …", key="msg", placeholder="Type your question here...")
+
+with col2:
+    if st.button("🚀", key="send_btn"):
+        send()
+        st.markdown(
+            "<script>document.querySelector('input[data-testid=\"stTextInput\"]')?.focus()</script>",
+            unsafe_allow_html=True
+        )
