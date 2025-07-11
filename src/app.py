@@ -1,5 +1,5 @@
 # ── FitMate ▸ app.py ────────────────────────────────────────────────────────
-import os, csv, re, time
+import os, csv, re, time, itertools          # ←➊ added itertools
 from datetime import datetime, timezone
 
 import streamlit as st
@@ -13,24 +13,27 @@ def escape_md(txt: str) -> str:
     return re.sub(r"(?<!\\)([*_])", r"\\\1", txt)
 
 
-def call_assistant(user_msg: str) -> str:
-    """Hit Assistants API → return plain-text reply (no citations)."""
+def call_assistant(user_msg: str, ph) -> str:        # ←➋ now receives placeholder
+    """
+    Hit Assistants API → return plain-text reply.
+    While waiting, animate dots inside `ph`.
+    """
     if "thread_id" not in st.session_state:
         st.session_state.thread_id = openai_client.beta.threads.create().id
 
     openai_client.beta.threads.messages.create(
-        thread_id=st.session_state.thread_id,
-        role="user",
-        content=user_msg,
+        thread_id=st.session_state.thread_id, role="user", content=user_msg
     )
     run = openai_client.beta.threads.runs.create(
         thread_id=st.session_state.thread_id,
         assistant_id=open("ids/af_assistant_id.txt").read().strip(),
     )
 
-    # simple polling loop
+    # 🟣 typing-dots animation
+    dots = itertools.cycle(["․", "․․", "․․․"])   # thin dots to minimise jump
     while run.status in {"queued", "in_progress"}:
-        time.sleep(0.4)
+        ph.markdown(f"_typing {next(dots)}_")
+        time.sleep(0.35)
         run = openai_client.beta.threads.runs.retrieve(
             thread_id=st.session_state.thread_id, run_id=run.id
         )
@@ -55,7 +58,6 @@ OPENAI_API_KEY = st.secrets.get("OPENAI_API_KEY", os.getenv("OPENAI_API_KEY"))
 if not OPENAI_API_KEY:
     raise RuntimeError("❌ OPENAI_API_KEY is missing.")
 
-# strip slow proxy vars
 for var in ("HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY",
             "http_proxy", "https_proxy", "all_proxy"):
     os.environ.pop(var, None)
@@ -90,7 +92,7 @@ st.markdown("---")
 st.markdown(
     """
     <style>
-      .animated-send {
+      .animated-send{
         background:linear-gradient(135deg,#7e5bef,#5f27cd);
         color:#fff;border:none;border-radius:8px;
         font-weight:600;font-size:20px;cursor:pointer;
@@ -110,48 +112,35 @@ st.markdown(
 # ── input + button (single form) ───────────────────────────────────────────
 with st.form("chat_form", clear_on_submit=True):
     col1, col2 = st.columns([5, 1], gap="small")
-
     with col1:
         user_input = st.text_input(
             "Ask FitMate …",
             placeholder="Type your question here…",
             label_visibility="collapsed",
         )
-
     with col2:
-        submit = st.form_submit_button(
-            "🚀",
-            use_container_width=True,
-            help="Send",
-            type="primary",
-            # custom class for nicer look
-            on_click=None,
-        )
+        submit = st.form_submit_button("🚀", use_container_width=True, type="primary")
 
     # ── handle submission *inside* the form block ──────────────────────────
     if submit and user_input.strip():
-        # 1️⃣ show the user's message immediately
         st.chat_message("user").markdown(escape_md(user_input.strip()))
 
-        # 2️⃣ placeholder for assistant "thinking..."
+        # placeholder that shows animated dots
         placeholder = st.chat_message("assistant").empty()
-        placeholder.markdown("‎_typing…_")        # invisible char keeps height
 
-        # 3️⃣ call OpenAI (blocks here, but UI shows the messages already)
-        assistant_reply = call_assistant(user_input.strip())
+        # call the model (animation happens inside call_assistant)
+        assistant_reply = call_assistant(user_input.strip(), placeholder)
 
-        # 4️⃣ stream the assistant reply character-by-character
+        # stream final reply
         typed = ""
         for ch in assistant_reply:
             typed += ch
             placeholder.markdown(escape_md(typed))
             time.sleep(0.01)
 
-        # 5️⃣ store + log
-        st.session_state.history.append(
-            {"role": "user", "content": user_input.strip()}
-        )
-        st.session_state.history.append(
-            {"role": "assistant", "content": assistant_reply}
-        )
+        # persist + log
+        st.session_state.history.extend([
+            {"role": "user", "content": user_input.strip()},
+            {"role": "assistant", "content": assistant_reply},
+        ])
         log_interaction(user_input.strip(), assistant_reply)
