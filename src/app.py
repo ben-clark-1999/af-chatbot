@@ -6,51 +6,42 @@ from dotenv import load_dotenv
 from openai import OpenAI
 
 def escape_md(text: str) -> str:
-    """Back-slash stray * or _ so Markdown shows them literally."""
     return re.sub(r'(?<!\\)([*_])', r'\\\1', text)
 
-# 1️⃣ local .env for dev
+# Load env
 load_dotenv()
-
-# 2️⃣ read secrets (cloud) → fallback to env (local)
 OPENAI_API_KEY = st.secrets.get("OPENAI_API_KEY", os.getenv("OPENAI_API_KEY"))
 if not OPENAI_API_KEY:
-    raise RuntimeError(
-        "❌ OPENAI_API_KEY is missing.\n"
-        "  • Locally: add it to .env\n"
-        "  • Streamlit Cloud: add it in Settings → Secrets"
-    )
+    raise RuntimeError("❌ OPENAI_API_KEY missing.")
 
 openai_client = OpenAI(api_key=OPENAI_API_KEY)
 
-# Strip any proxy vars
-for var in (
-    "HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY",
-    "http_proxy", "https_proxy", "all_proxy",
-):
+# Strip proxies
+for var in ("HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY", "http_proxy", "https_proxy", "all_proxy"):
     os.environ.pop(var, None)
 
-# ── STREAMLIT PAGE INIT ─────────────────────────────────────────────────────
+# Streamlit page setup
 SYSTEM_PROMPT = open("data/af_prompt.txt").read().strip()
 VS_ID = open("ids/vector_store_id.txt").read().strip()
-
 st.set_page_config(page_title="FitMate", page_icon="💜")
 st.title("💜 FitMate – Anytime Fitness Assistant")
 
 if "history" not in st.session_state:
     st.session_state.history = [
         {"role": "system", "content": SYSTEM_PROMPT},
-        {
-            "role": "assistant",
-            "content": "Hi! I'm FitMate 👋\n\nAsk me anything about Anytime Fitness — locations, billing, gym hours — or general fitness guidance.",
-        },
+        {"role": "assistant", "content": "Hi! I'm FitMate 👋\n\nAsk me anything about Anytime Fitness — locations, billing, gym hours — or general fitness guidance."},
     ]
 
-# ── CHAT HANDLER ─────────────────────────────────────────────────────────────
-def send() -> None:
+# Ensure 'msg' always exists
+if "msg" not in st.session_state:
+    st.session_state.msg = ""
+
+# ── Chat Handler ──
+def send():
     user = st.session_state.msg.strip()
     if not user:
         return
+
     st.session_state.msg = ""
     st.session_state.history.append({"role": "user", "content": user})
 
@@ -63,6 +54,7 @@ def send() -> None:
         role="user",
         content=user,
     )
+
     run = openai_client.beta.threads.runs.create(
         thread_id=st.session_state.thread_id,
         assistant_id=open("ids/af_assistant_id.txt").read().strip(),
@@ -71,7 +63,8 @@ def send() -> None:
     while run.status in {"queued", "in_progress"}:
         time.sleep(0.4)
         run = openai_client.beta.threads.runs.retrieve(
-            thread_id=st.session_state.thread_id, run_id=run.id
+            thread_id=st.session_state.thread_id,
+            run_id=run.id,
         )
 
     msgs = openai_client.beta.threads.messages.list(
@@ -86,7 +79,7 @@ def send() -> None:
         csv.writer(f).writerow([datetime.now(timezone.utc), user, assistant_msg])
     print(f"✅ Logged to {log_path}")
 
-# ── CHAT UI ──────────────────────────────────────────────────────────────────
+# ── Chat Display ──
 for i, msg in enumerate(st.session_state.history[1:]):
     if msg["role"] == "assistant" and i == len(st.session_state.history[1:]) - 1:
         placeholder = st.chat_message("assistant").empty()
@@ -98,10 +91,10 @@ for i, msg in enumerate(st.session_state.history[1:]):
     else:
         st.chat_message(msg["role"]).markdown(escape_md(msg["content"]))
 
-# INPUT FIELD + SEND BUTTON (Animated)
+# ── Input + Send Button ──
 st.markdown("---")
 
-# Inject button styling
+# CSS for animated button
 st.markdown("""
 <style>
 .animated-send {
@@ -130,5 +123,5 @@ with col1:
 
 with col2:
     if st.button("🚀", key="send_btn"):
-        if st.session_state.msg.strip():
+        if "msg" in st.session_state and st.session_state.msg.strip():
             send()
