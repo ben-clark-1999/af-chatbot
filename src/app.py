@@ -1,5 +1,5 @@
 # ── FitMate ▸ app.py ────────────────────────────────────────────────────────
-import os, csv, re, time, itertools          # ←➊ added itertools
+import os, csv, re, time
 from datetime import datetime, timezone
 
 import streamlit as st
@@ -9,39 +9,44 @@ from openai import OpenAI
 
 # ── helpers ────────────────────────────────────────────────────────────────
 def escape_md(txt: str) -> str:
-    """Back-slash stray * / _ so Markdown shows them literally."""
+    """Back-slash stray * / _ so Markdown renders them literally."""
     return re.sub(r"(?<!\\)([*_])", r"\\\1", txt)
 
 
-def call_assistant(user_msg: str, ph) -> str:        # ←➋ now receives placeholder
+def call_assistant(user_msg: str, placeholder) -> str:
     """
-    Hit Assistants API → return plain-text reply.
-    While waiting, animate dots inside `ph`.
+    ▸ Streams a _typing…_ animation while the run is pending  
+    ▸ Returns the assistant’s plain-text reply (citations stripped)
     """
+    # one thread per browser session
     if "thread_id" not in st.session_state:
         st.session_state.thread_id = openai_client.beta.threads.create().id
 
     openai_client.beta.threads.messages.create(
-        thread_id=st.session_state.thread_id, role="user", content=user_msg
+        thread_id=st.session_state.thread_id,
+        role="user",
+        content=user_msg,
     )
     run = openai_client.beta.threads.runs.create(
         thread_id=st.session_state.thread_id,
         assistant_id=open("ids/af_assistant_id.txt").read().strip(),
     )
 
-    # 🟣 typing-dots animation
-    dots = itertools.cycle(["․", "․․", "․․․"])   # thin dots to minimise jump
+    cycle = ["_typing ._", "_typing .._", "_typing ..._"]
+    step = 0
     while run.status in {"queued", "in_progress"}:
-        ph.markdown(f"_typing {next(dots)}_")
-        time.sleep(0.35)
+        placeholder.markdown(cycle[step])
+        step = (step + 1) % len(cycle)
+        time.sleep(0.4)
         run = openai_client.beta.threads.runs.retrieve(
             thread_id=st.session_state.thread_id, run_id=run.id
         )
 
-    msgs = openai_client.beta.threads.messages.list(
+    # final assistant message = last message in thread
+    raw = openai_client.beta.threads.messages.list(
         thread_id=st.session_state.thread_id, order="asc"
-    )
-    raw = msgs.data[-1].content[0].text.value
+    ).data[-1].content[0].text.value
+
     return re.sub(r"【[^】]*】", "", raw).strip()
 
 
@@ -58,6 +63,7 @@ OPENAI_API_KEY = st.secrets.get("OPENAI_API_KEY", os.getenv("OPENAI_API_KEY"))
 if not OPENAI_API_KEY:
     raise RuntimeError("❌ OPENAI_API_KEY is missing.")
 
+# strip slow proxy vars
 for var in ("HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY",
             "http_proxy", "https_proxy", "all_proxy"):
     os.environ.pop(var, None)
@@ -88,11 +94,12 @@ for msg in st.session_state.history[1:]:
 
 st.markdown("---")
 
-# ── CSS for button ─────────────────────────────────────────────────────────
+# ── CSS tweaks: prettified button + responsive text wrapping ───────────────
 st.markdown(
     """
     <style>
-      .animated-send{
+      /* gradient send button */
+      .animated-send {
         background:linear-gradient(135deg,#7e5bef,#5f27cd);
         color:#fff;border:none;border-radius:8px;
         font-weight:600;font-size:20px;cursor:pointer;
@@ -104,6 +111,12 @@ st.markdown(
         transform:scale(.93);
         box-shadow:0 2px 6px rgba(94,58,255,.6);
       }
+      /* wrap long URLs / sentences on mobiles */
+      [data-testid="stChatMessage"] .markdown-text-container {
+        white-space:pre-wrap;
+        word-wrap:break-word;
+        overflow-wrap:anywhere;
+      }
     </style>
     """,
     unsafe_allow_html=True,
@@ -112,35 +125,45 @@ st.markdown(
 # ── input + button (single form) ───────────────────────────────────────────
 with st.form("chat_form", clear_on_submit=True):
     col1, col2 = st.columns([5, 1], gap="small")
+
     with col1:
         user_input = st.text_input(
             "Ask FitMate …",
             placeholder="Type your question here…",
             label_visibility="collapsed",
         )
+
     with col2:
-        submit = st.form_submit_button("🚀", use_container_width=True, type="primary")
+        submit = st.form_submit_button(
+            "🚀",
+            use_container_width=True,
+            help="Send",
+            type="primary",
+        )
 
     # ── handle submission *inside* the form block ──────────────────────────
     if submit and user_input.strip():
+        # 1️⃣ echo the user's message instantly
         st.chat_message("user").markdown(escape_md(user_input.strip()))
 
-        # placeholder that shows animated dots
+        # 2️⃣ placeholder for animated typing
         placeholder = st.chat_message("assistant").empty()
 
-        # call the model (animation happens inside call_assistant)
+        # 3️⃣ get assistant reply (shows typing animation while waiting)
         assistant_reply = call_assistant(user_input.strip(), placeholder)
 
-        # stream final reply
+        # 4️⃣ stream reply char-by-char for that “typing” feel
         typed = ""
         for ch in assistant_reply:
             typed += ch
             placeholder.markdown(escape_md(typed))
             time.sleep(0.01)
 
-        # persist + log
-        st.session_state.history.extend([
-            {"role": "user", "content": user_input.strip()},
-            {"role": "assistant", "content": assistant_reply},
-        ])
+        # 5️⃣ persist & log
+        st.session_state.history.extend(
+            [
+                {"role": "user", "content": user_input.strip()},
+                {"role": "assistant", "content": assistant_reply},
+            ]
+        )
         log_interaction(user_input.strip(), assistant_reply)
