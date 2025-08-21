@@ -1,5 +1,5 @@
 # ── FitMate • app.py ────────────────────────────────────────────────────────
-import os, csv, re, time, html
+import os, csv, re, time
 from datetime import datetime, timezone
 
 import streamlit as st
@@ -9,7 +9,7 @@ from openai import OpenAI
 
 # ── text helpers ────────────────────────────────────────────────────────────
 def escape_md(txt: str) -> str:
-    """Back-slash stray * or _ so Markdown shows them literally."""
+    """Back-slash stray * or _ so Markdown shows them literally (for user msgs)."""
     return re.sub(r"(?<!\\)([*_])", r"\\\1", txt)
 
 
@@ -22,15 +22,6 @@ def clean(txt: str) -> str:
     txt = re.sub(r"[\u2013\u2014]", " — ", txt)        # en/em dash → space-dash-space
     txt = re.sub(r"\s{2,}", " ", txt)                  # collapse double spaces
     return txt.strip()
-
-
-def render_msg(container, role: str, content: str) -> None:
-    """Write plain text with safe HTML so spaces & wrapping are preserved."""
-    safe = html.escape(content)
-    container.markdown(
-        f'<div style="white-space:pre-wrap;line-height:1.55">{safe}</div>',
-        unsafe_allow_html=True,
-    )
 
 
 # ── OpenAI call ─────────────────────────────────────────────────────────────
@@ -58,7 +49,7 @@ def call_assistant(user_msg: str) -> str:
         thread_id=st.session_state.thread_id, order="asc"
     ).data[-1].content[0].text.value
 
-    # Remove citations like  
+    # Remove citations like   etc.
     raw = re.sub(r"【\d+:\d+†[^】]+】", "", raw)
 
     return clean(raw)
@@ -78,6 +69,7 @@ if not key:
     raise RuntimeError("❌ OPENAI_API_KEY is missing.")
 openai_client = OpenAI(api_key=key)
 
+# Avoid proxy interference on Streamlit Cloud
 for v in ("HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY",
           "http_proxy", "https_proxy", "all_proxy"):
     os.environ.pop(v, None)
@@ -102,15 +94,19 @@ for idx, msg in enumerate(st.session_state.history[1:]):
     if (msg["role"] == "assistant"
             and idx == 0
             and not st.session_state.get("intro_done")):
+        # type-once intro with Markdown (so **bold** and lists render)
         ph = box.empty()
         buf = ""
         for ch in msg["content"]:
             buf += ch
-            render_msg(ph, "assistant", buf)
+            ph.markdown(buf)
             time.sleep(0.01)
         st.session_state.intro_done = True
     else:
-        render_msg(box, msg["role"], msg["content"])
+        if msg["role"] == "user":
+            box.markdown(escape_md(msg["content"]))
+        else:
+            box.markdown(msg["content"])
 
 st.markdown("---")
 
@@ -156,15 +152,19 @@ with st.form("chat_form", clear_on_submit=True):
         )
 
     if submitted and user_input.strip():
-        render_msg(st.chat_message("user"), "user", escape_md(user_input.strip()))
+        # show user message safely (no unintended markdown)
+        st.chat_message("user").markdown(escape_md(user_input.strip()))
+
+        # temporary "typing" indicator
         ph = st.chat_message("assistant").empty()
         ph.markdown("*typing <span class='blinker'>▋</span>*", unsafe_allow_html=True)
+
         assistant_reply = call_assistant(user_input.strip())
-        typed = ""
-        for ch in assistant_reply:
-            typed += ch
-            render_msg(ph, "assistant", typed)
-            time.sleep(0.01)
+
+        # final assistant message as Markdown (so **Gladesville** renders bold)
+        ph.markdown(assistant_reply)
+
+        # store raw user + assistant messages (we escape only when displaying user)
         st.session_state.history.extend([
             {"role": "user", "content": user_input.strip()},
             {"role": "assistant", "content": assistant_reply},
