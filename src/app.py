@@ -287,25 +287,62 @@ def call_assistant(user_msg: str, agent_key: str, goal: Optional[str] = None) ->
 
 
 # ── UI ───────────────────────────────────────────────────────────────────────
-import streamlit as st
-
 st.set_page_config(page_title="FitMate", page_icon="💜")
 
-# use the sidebar from ui.py
-agent_key, selected_goal = sidebar_agent_picker(AGENTS)
+with st.sidebar:
+    st.header("FitMate agents")
+    agent_key = st.selectbox(
+        "Choose an agent:",
+        options=list(AGENTS.keys()),
+        format_func=lambda k: AGENTS[k]["label"],
+    )
+    current_agent = AGENTS[agent_key]
+
+    selected_goal = None
+    if current_agent["goals"]:
+        goal_option = st.selectbox(
+            "Goal (optional):",
+            options=["(not specified)"] + current_agent["goals"],
+        )
+        if goal_option != "(not specified)":
+            selected_goal = goal_option
 
 st.title("💜 FitMate – Anytime Fitness Assistant (multi-agent)")
 
 # show chat history for the chosen agent
 history = get_history(agent_key)
-render_history(history, escape_md)
+for msg in history:
+    box = st.chat_message(msg["role"])
+    if msg["role"] == "user":
+        box.markdown(escape_md(msg["content"]))
+    else:
+        # allow markdown/HTML-looking content from assistants
+        box.markdown(msg["content"], unsafe_allow_html=True)
 
 st.markdown("---")
 
-# global styles
-inject_styles()
+st.markdown(
+    """
+    <style>
+      div.stButton > button:first-child {
+        background:linear-gradient(135deg,#7e5bef,#5f27cd);
+        color:#fff;border:none;border-radius:8px;
+        font-weight:600;font-size:20px;cursor:pointer;
+        width:100%;height:55px;
+        transition:transform .15s,box-shadow .2s;
+        box-shadow:0 4px 12px rgba(94,58,255,.3);
+      }
+      div.stButton > button:first-child:active {
+        transform:scale(.93);
+        box-shadow:0 2px 6px rgba(94,58,255,.6);
+      }
+      @keyframes pulse{0%{opacity:0}50%{opacity:1}100%{opacity:0}}
+      .blinker{font-weight:600;animation:pulse 1s infinite}
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
 
-# chat form
 with st.form("chat_form", clear_on_submit=True):
     col1, col2 = st.columns([5, 1], gap="small")
 
