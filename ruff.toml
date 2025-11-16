@@ -1,6 +1,8 @@
-[tool.ruff]
+# ruff.toml (no [tool.ruff] header here)
+
 line-length = 100
 target-version = "py311"
 
+[lint]
 # Keep it lightweight: basic errors & formatting only
 select = ["E", "F"]
