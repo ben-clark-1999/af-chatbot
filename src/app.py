@@ -1,11 +1,15 @@
 # ── FitMate • app.py (multi-agent) ───────────────────────────────────────────
-import os, csv, re, time
+import os
+import csv
+import re
+import time
 from datetime import datetime, timezone
 from typing import Optional
 
 import streamlit as st
 from dotenv import load_dotenv
 from openai import OpenAI
+
 
 from ui import inject_styles, sidebar_agent_picker, render_history
 
@@ -127,7 +131,10 @@ def normalize_workout_markdown(text: str) -> str:
         lines.append(line)
 
     # ── post-process: ensure tips exist ──────────────────────────────────────
-    if any(l.strip().lower().startswith("**tips for success:**") for l in lines):
+    if any(
+        line_item.strip().lower().startswith("**tips for success:**")
+        for line_item in lines
+    ):
         out_lines = []
         i = 0
         while i < len(lines):
@@ -169,7 +176,8 @@ AGENTS = {
         "label": "AF - Virtual Coach",
         "id_path": "ids/af_training_id.txt",
         "greeting": (
-            "You're chatting with the training/programming coach. Tell me your goal and available days."
+            "You're chatting with the training/programming coach. "
+            "Tell me your goal and available days."
         ),
         "goals": ["Lose fat", "Build muscle", "Get stronger", "Improve conditioning"],
     },
