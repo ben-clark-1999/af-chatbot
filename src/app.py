@@ -202,9 +202,13 @@ def log(agent_key: str, q: str, a: str) -> None:
 
 # ── load env & client ────────────────────────────────────────────────────────
 load_dotenv()
-key = st.secrets.get("OPENAI_API_KEY", os.getenv("OPENAI_API_KEY"))
+
+# Prefer environment variable; GitHub Actions and .env both end up here
+key = os.getenv("OPENAI_API_KEY")
+
 if not key:
     raise RuntimeError("❌ OPENAI_API_KEY is missing.")
+
 openai_client = OpenAI(api_key=key)
 
 # avoid proxy vars
