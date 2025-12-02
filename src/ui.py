@@ -68,3 +68,4 @@ def render_history(history: List[Dict[str, str]], escape_md) -> None:
             # allow markdown/HTML-looking content from assistants
             box.markdown(msg["content"], unsafe_allow_html=True)
 
+
