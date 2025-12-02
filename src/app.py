@@ -396,3 +396,4 @@ with st.form("chat_form", clear_on_submit=True):
         log(agent_key, user_input.strip(), reply)
 
         st.rerun()
+
