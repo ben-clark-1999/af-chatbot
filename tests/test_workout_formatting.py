@@ -39,3 +39,5 @@ def test_normalize_indents_exercises_as_bullets():
     # Exercises should be indented as bullets
     assert "  - Exercise 1: Bench Press 3x8" in out
 
+
+
