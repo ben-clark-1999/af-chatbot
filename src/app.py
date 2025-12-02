@@ -250,7 +250,13 @@ def set_history(agent_key: str, history):
 
 
 def load_assistant_id(path: str) -> str:
-    with open(path) as f:
+    # 1. Get the directory containing this script (app.py)
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    
+    # 2. Join it with the relative path (e.g., "ids/af_assistant_id.txt")
+    full_path = os.path.join(base_dir, path)
+    
+    with open(full_path) as f:
         return f.read().strip()
 
 
@@ -390,3 +396,4 @@ with st.form("chat_form", clear_on_submit=True):
         log(agent_key, user_input.strip(), reply)
 
         st.rerun()
+
