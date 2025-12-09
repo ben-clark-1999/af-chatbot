@@ -250,15 +250,17 @@ def set_history(agent_key: str, history):
 
 
 def load_assistant_id(path: str) -> str:
-    # 1. Get the directory containing this script (app.py)
-    base_dir = os.path.dirname(os.path.abspath(__file__))
+    # 1. Get the directory containing this script (src/)
+    script_dir = os.path.dirname(os.path.abspath(__file__))
     
-    # 2. Join it with the relative path (e.g., "ids/af_assistant_id.txt")
-    full_path = os.path.join(base_dir, path)
+    # 2. Go up one level to the project root (af-chatbot/)
+    project_root = os.path.dirname(script_dir)
+    
+    # 3. Join with the relative path (e.g., "ids/af_assistant_id.txt")
+    full_path = os.path.join(project_root, path)
     
     with open(full_path) as f:
         return f.read().strip()
-
 
 # ── core call ────────────────────────────────────────────────────────────────
 def call_assistant(user_msg: str, agent_key: str, goal: Optional[str] = None) -> str:
