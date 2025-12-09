@@ -162,10 +162,23 @@ def normalize_workout_markdown(text: str) -> str:
 
 
 # ── define all agents here ───────────────────────────────────────────────────
+
+# Helper: Try to load secrets, but fall back to dummy IDs for testing/CI
+try:
+    # Attempt to read from real secrets
+    gen_id = st.secrets["assistants"]["general"]
+    train_id = st.secrets["assistants"]["training"]
+    nutri_id = st.secrets["assistants"]["nutrition"]
+except (FileNotFoundError, KeyError):
+    # Fallback for CI/Tests (when secrets.toml is missing)
+    gen_id = "test-assistant-id"
+    train_id = "test-training-id"
+    nutri_id = "test-nutrition-id"
+
 AGENTS = {
     "general": {
         "label": "AF – Member Support",
-        "id": st.secrets["assistants"]["general"],  # Reads from [assistants] section
+        "id": gen_id, 
         "greeting": (
             "Hi! I'm FitMate 👋\n\n"
             "Ask me anything about Anytime Fitness — locations, billing, staffed hours, or joining."
@@ -174,7 +187,7 @@ AGENTS = {
     },
     "training": {
         "label": "AF - Virtual Coach",
-        "id": st.secrets["assistants"]["training"],  # Reads from [assistants] section
+        "id": train_id,
         "greeting": (
             "You're chatting with the training/programming coach. "
             "Tell me your goal and available days."
@@ -183,14 +196,13 @@ AGENTS = {
     },
     "nutrition": {
         "label": "AF – Nutrition Coach",
-        "id": st.secrets["assistants"]["nutrition"],  # Reads from [assistants] section
+        "id": nutri_id,
         "greeting": (
             "You're chatting with the nutrition coach. Tell me what you eat now and your target."
         ),
         "goals": ["Lose fat", "Maintain & lean out", "Gain muscle"],
     },
 }
-
 
 # ── logging ──────────────────────────────────────────────────────────────────
 def log(agent_key: str, q: str, a: str) -> None:
