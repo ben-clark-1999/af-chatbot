@@ -165,7 +165,7 @@ def normalize_workout_markdown(text: str) -> str:
 AGENTS = {
     "general": {
         "label": "AF – Member Support",
-        "id_path": "ids/af_assistant_id.txt",
+        "id": st.secrets["assistants"]["general"],  # Reads from [assistants] section
         "greeting": (
             "Hi! I'm FitMate 👋\n\n"
             "Ask me anything about Anytime Fitness — locations, billing, staffed hours, or joining."
@@ -174,7 +174,7 @@ AGENTS = {
     },
     "training": {
         "label": "AF - Virtual Coach",
-        "id_path": "ids/af_training_id.txt",
+        "id": st.secrets["assistants"]["training"],  # Reads from [assistants] section
         "greeting": (
             "You're chatting with the training/programming coach. "
             "Tell me your goal and available days."
@@ -183,7 +183,7 @@ AGENTS = {
     },
     "nutrition": {
         "label": "AF – Nutrition Coach",
-        "id_path": "ids/af_nutrition_id.txt",
+        "id": st.secrets["assistants"]["nutrition"],  # Reads from [assistants] section
         "greeting": (
             "You're chatting with the nutrition coach. Tell me what you eat now and your target."
         ),
@@ -265,7 +265,9 @@ def load_assistant_id(path: str) -> str:
 # ── core call ────────────────────────────────────────────────────────────────
 def call_assistant(user_msg: str, agent_key: str, goal: Optional[str] = None) -> str:
     thread_id = get_thread_id(agent_key)
-    assistant_id = load_assistant_id(AGENTS[agent_key]["id_path"])
+    
+    # NEW: Direct access to ID from the dictionary we updated above
+    assistant_id = AGENTS[agent_key]["id"]
 
     if goal:
         user_msg = f"User goal: {goal}\n\n{user_msg}"
